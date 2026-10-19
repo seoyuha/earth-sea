@@ -28,7 +28,45 @@ body{background:linear-gradient(180deg,#a6e4fb 0%,#f4f9d8 100%);}
 @media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.plant{min-height:72px;gap:3px}.plant img{width:43px;height:43px}.board{aspect-ratio:9/5}.modal{padding:18px}.answers{grid-template-columns:1fr 1fr}}
 @media(max-width:530px){.sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}.plant{font-size:14px}.plant img{width:36px;height:36px}.answers{grid-template-columns:1fr}.answer{min-height:54px}.top{padding:12px}.board{min-width:0}.quiz-art{height:150px}.modal h3{font-size:21px}}
 @media(prefers-reduced-motion:reduce){.float{animation:none}.plant.sel{transform:none}}
-</style></head><body><div class="wrap"><header class="top"><div><h1>🌻 과학 정원 지키기!</h1><div class="sub">3학년 과학 · 지구와 바다 · 혼자서 즐기는 복습 디펜스</div></div><div class="stats"><div class="stat">☀️ <span id="sun">150</span></div><div class="stat">❤️ <span id="lives">5</span></div><div class="stat">⭐ <span id="score">0</span></div></div></header><main class="layout"><aside class="sidebar" id="plants"></aside><section class="panel"><div class="stagehead"><div><strong id="stageTitle">1단계 · 지구를 둘러싼 대기</strong><div class="small" id="status">시작 버튼을 눌러주세요.</div></div><button class="primary" id="quizBtn">📘 과학 문제 풀기 (+50 ☀️)</button></div><div class="progress"><div id="progress"></div></div><div class="boardbox" style="margin-top:10px"><div class="board" id="board"><div class="gridline" id="grid"></div></div></div><div class="footer"><button class="secondary" id="startBtn">▶ 게임 시작</button><button class="secondary" id="pauseBtn">⏸ 일시정지</button><button class="secondary" id="restartBtn">↻ 처음부터</button><button class="secondary" id="resetProgress" title="이 기기의 최고 기록을 지웁니다">기록 초기화</button><label class="small"><input type="checkbox" id="sound" checked> 효과음</label><span class="small" id="feedback">식물을 고르고 잔디밭을 누르면 심을 수 있어요.</span></div><div id="studyPanel" role="status"><strong>📚 오늘의 복습</strong> · 문제를 풀고 과학 지식을 모아 보세요! <span id="bestRecord"></span></div><p class="hint">🌻 태양꽃은 태양을 만들고, 🌱 콩 발사기는 좀비를 공격해요. 과학 문제를 풀어 태양을 얻으세요! 문제를 푸는 동안에는 게임이 멈춰요. 틀린 문제도 다시 공부할 수 있어요.</p></section></main></div><div class="overlay" id="overlay"><div class="modal" id="modal"></div></div><script>
+
+/* Visual upgrade: layered comic lawn, tactile seed cards, fullscreen play */
+body{background:radial-gradient(ellipse at 50% 0%,#dff7ff 0%,#8dcfea 55%,#70b58b 100%);background-attachment:fixed}
+.wrap{max-width:1450px}.top{border:5px solid #704b2e;background:linear-gradient(#fff9e4,#f4e4b7);box-shadow:0 7px 0 #4f6a3e,0 12px 25px #34572b50}
+h1{color:#477a2d;text-shadow:1px 2px 0 #fff,2px 3px 0 #d1bc6b}.panel{border:5px solid #7b5836;background:linear-gradient(#fff9e6,#f2e6c6);box-shadow:0 7px 0 #624b2c,0 12px 18px #294d2750}
+.plant{background:linear-gradient(135deg,#f5f4d8,#b9d5a3);border:4px solid #6d5738;box-shadow:0 4px 0 #5d452e,0 7px 10px #31491e40;transition:transform .12s,filter .12s}
+.plant:hover{filter:brightness(1.06)}.plant.sel{background:linear-gradient(#fff8bf,#f6d36e);border-color:#b66e20;transform:translateY(2px);box-shadow:0 2px 0 #8e551d}
+.plant img{object-fit:contain;image-rendering:auto;filter:drop-shadow(1px 3px 2px #31471c70)}
+.boardbox{border:8px solid #755032;border-radius:14px;box-shadow:inset 0 0 0 3px #ad8352,0 7px 0 #4e3927,0 12px 16px #243d1d55;background:#4e873b}
+.board{isolation:isolate;background:repeating-linear-gradient(to bottom,#8bc65b 0%,#8bc65b 20%,#76b44c 20%,#76b44c 40%)}
+.board:before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:repeating-linear-gradient(90deg,transparent 0%,transparent 11.04%,#426e2b33 11.09%,transparent 11.15%),repeating-linear-gradient(0deg,transparent 0%,transparent 19.8%,#4c772d55 19.9%,transparent 20%);box-shadow:inset 0 14px 22px #2d6a2966,inset 0 -8px 14px #285a2666}
+.board:after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.32;background-image:radial-gradient(#d8f59e 1px,transparent 1.5px),radial-gradient(#376b27 1px,transparent 1.5px);background-size:31px 27px,41px 35px;background-position:7px 8px,20px 17px}
+.gridline{z-index:1}.gridline div{border:1px solid #315c2533}.unit{z-index:3;transform:translateZ(0);image-rendering:auto;filter:drop-shadow(1px 5px 2px #23471b80);contain:layout style paint}.zombie{z-index:4}.projectile{z-index:5}.lawnmower{z-index:6;background:linear-gradient(120deg,#ff9870,#be382a);border:2px solid #763528;box-shadow:0 3px 3px #264a2866}
+.stagehead strong{font-size:clamp(18px,2.1vw,25px);color:#57401e}.progress{border:2px solid #745531;background:#d8c99e;height:20px}.progress>div{background:linear-gradient(#b9ed61,#5d9f32);transition:width .2s}
+.primary{background:linear-gradient(#ffe987,#f5b942);border-color:#a56a23;box-shadow:0 4px 0 #7d4a20}.secondary{background:linear-gradient(#f5f3d4,#c6dfa7);border:2px solid #6b8349;box-shadow:0 3px 0 #71824d}
+.fullscreen-toggle{position:fixed;top:12px;right:12px;z-index:30;display:flex;align-items:center;gap:7px;border:3px solid #684c2b;border-radius:12px;background:linear-gradient(#fff6c5,#f4c65d);box-shadow:0 4px 0 #5c442c;padding:10px 14px;font-size:16px;font-weight:900;color:#49341b}
+.fullscreen-toggle:focus-visible{outline:4px solid #227bc7;outline-offset:3px}
+body:fullscreen,body:-webkit-full-screen{overflow:auto;background:#b0d9a0}body:fullscreen .wrap{max-width:1800px}
+@media(max-width:900px){.fullscreen-toggle{top:6px;right:6px;padding:7px 9px;font-size:13px}.top{padding-right:100px}.plant{min-height:68px}}
+@media(max-width:540px){.fullscreen-toggle{position:fixed;font-size:12px;padding:6px 8px}.top{padding-right:84px}.boardbox{border-width:5px}.plant{border-width:3px}}
+
+/* Illustrated science defense edition */
+body{background:linear-gradient(#79cbea 0%,#d5f4fb 34%,#b9dd82 80%);background-attachment:fixed}
+.top{background:linear-gradient(125deg,#fff7da,#f7e1ac);border-color:#815631;box-shadow:0 6px 0 #5b432b,0 12px 30px #234e2c55}
+.panel{background:linear-gradient(#fff8df,#f6e7c5);border-color:#805633}
+.boardbox{border:8px solid #81562d;box-shadow:inset 0 0 0 3px #b58c4b,0 7px 0 #51381e,0 14px 24px #233c1e6b}
+.board{background:repeating-linear-gradient(to bottom,#9cd76d 0%,#9cd76d 20%,#86c35c 20%,#86c35c 40%)}
+.board:before{background:repeating-linear-gradient(90deg,transparent 0%,transparent 11.04%,#497d2b38 11.1%,transparent 11.16%),repeating-linear-gradient(0deg,transparent 0%,transparent 19.8%,#4a802e48 19.9%,transparent 20%);box-shadow:inset 0 13px 20px #35692a55}
+.board:after{opacity:.3;background-image:radial-gradient(ellipse,#d9f8a7 1.5px,transparent 2px),radial-gradient(ellipse,#3b792b 1px,transparent 2px);background-size:29px 23px,37px 33px}
+.unit{filter:drop-shadow(1px 5px 2px #224c2088);background-size:600% 100%;image-rendering:auto}
+.plant img{object-fit:contain;object-position:center;filter:drop-shadow(0 3px 2px #3a512c55)}
+.plant{background:linear-gradient(120deg,#fff4ce,#c9e6a4);border-color:#765532}
+.plant.sel{background:linear-gradient(#fff6af,#f5ce61);border-color:#bc7b29}
+.lawnmower{background:linear-gradient(135deg,#ff9b5e,#d63f32);border-radius:7px}
+.projectile{border:2px solid #497b2c;box-shadow:0 0 8px #edff95, inset -3px -3px 3px #467b26}
+#feedback{font-weight:700;color:#42652b}
+.fullscreen-toggle{top:10px;right:10px}
+@media(max-width:900px){.fullscreen-toggle{font-size:13px;padding:7px 10px}}
+</style></head><body><button id="fullscreenBtn" class="fullscreen-toggle" type="button" aria-label="전체화면으로 전환">⛶ 전체화면</button><div class="wrap"><header class="top"><div><h1>🌻 과학 정원 지키기!</h1><div class="sub">3학년 과학 · 지구와 바다 · 혼자서 즐기는 복습 디펜스</div></div><div class="stats"><div class="stat">☀️ <span id="sun">150</span></div><div class="stat">❤️ <span id="lives">5</span></div><div class="stat">⭐ <span id="score">0</span></div></div></header><main class="layout"><aside class="sidebar" id="plants"></aside><section class="panel"><div class="stagehead"><div><strong id="stageTitle">1단계 · 지구를 둘러싼 대기</strong><div class="small" id="status">시작 버튼을 눌러주세요.</div></div><button class="primary" id="quizBtn">📘 과학 문제 풀기 (+50 ☀️)</button></div><div class="progress"><div id="progress"></div></div><div class="boardbox" style="margin-top:10px"><div class="board" id="board"><div class="gridline" id="grid"></div></div></div><div class="footer"><button class="secondary" id="startBtn">▶ 게임 시작</button><button class="secondary" id="pauseBtn">⏸ 일시정지</button><button class="secondary" id="restartBtn">↻ 처음부터</button><button class="secondary" id="resetProgress" title="이 기기의 최고 기록을 지웁니다">기록 초기화</button><label class="small"><input type="checkbox" id="sound" checked> 효과음</label><span class="small" id="feedback">식물을 고르고 잔디밭을 누르면 심을 수 있어요.</span></div><div id="studyPanel" role="status"><strong>📚 오늘의 복습</strong> · 문제를 풀고 과학 지식을 모아 보세요! <span id="bestRecord"></span></div><p class="hint">🌻 태양꽃은 태양을 만들고, 🌱 콩 발사기는 좀비를 공격해요. 과학 문제를 풀어 태양을 얻으세요! 문제를 푸는 동안에는 게임이 멈춰요. 틀린 문제도 다시 공부할 수 있어요.</p></section></main></div><div class="overlay" id="overlay"><div class="modal" id="modal"></div></div><script>
 
 const STAGE_SCENES=[
 `<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#79cdf5"/><stop offset="1" stop-color="#e9f8ff"/></linearGradient></defs><rect width="640" height="220" fill="url(#sky)"/><circle cx="535" cy="45" r="29" fill="#ffdd61"/><g fill="#fff" opacity=".95"><ellipse cx="105" cy="62" rx="75" ry="23"/><ellipse cx="150" cy="52" rx="45" ry="29"/><ellipse cx="420" cy="105" rx="80" ry="21"/></g><path d="M0 186 Q160 156 320 184 T640 182 V220 H0Z" fill="#9dd27b"/><path d="M200 124 Q240 105 275 124" fill="none" stroke="#317db8" stroke-width="6" stroke-linecap="round"/><path d="M263 110 L280 126 L259 136" fill="none" stroke="#317db8" stroke-width="6" stroke-linecap="round"/><path d="M290 154 Q335 130 380 150" fill="none" stroke="#317db8" stroke-width="6" stroke-linecap="round"/><text x="22" y="205" font-size="21" fill="#2c603b" font-weight="bold">우리 주변에는 보이지 않는 공기가 있어요!</text>`,
@@ -91,7 +129,7 @@ function draw(){
     el.style.left=p.col*100/9+'%';el.style.top=p.row*20+'%';
     const mode=p.anim>0?'attack':'idle';
     if(el.dataset.mode!==mode){el.style.backgroundImage=`url("${sprite(p.id,mode)}")`;el.dataset.mode=mode;}
-    el.style.backgroundPosition=`${(Math.floor(performance.now()/145)%6)*20}% 0`;
+    const frameIndex=Math.floor(performance.now()/170)%6;if(el.dataset.frame!==String(frameIndex)){el.style.backgroundPosition=`${frameIndex*20}% 0`;el.dataset.frame=String(frameIndex)}
     el.firstChild.firstChild.style.width=Math.max(0,p.hp/p.max*100)+'%';
   }
   for(const z of zombies){
@@ -99,7 +137,7 @@ function draw(){
     el.style.left=z.x*100/9+'%';el.style.top=z.row*20+'%';
     const mode=z.hurt>0?'hurt':z.bite>0?'attack':'idle';
     if(el.dataset.mode!==mode){el.style.backgroundImage=`url("${sprite(z.id,mode)}")`;el.dataset.mode=mode;}
-    el.style.backgroundPosition=`${(Math.floor(performance.now()/150)%6)*20}% 0`;
+    const frameIndex=Math.floor(performance.now()/180)%6;if(el.dataset.frame!==String(frameIndex)){el.style.backgroundPosition=`${frameIndex*20}% 0`;el.dataset.frame=String(frameIndex)}
     el.style.filter=z.slow?'drop-shadow(0 0 7px #38b9ff)':'';
     el.firstChild.firstChild.style.width=Math.max(0,z.hp/z.max*100)+'%';
   }
@@ -113,4 +151,10 @@ function draw(){
 }
 $('board').onclick=e=>{const r=$('board').getBoundingClientRect();plantAt((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height)};$('quizBtn').onclick=quiz;$('startBtn').onclick=()=>{if(state==='menu'||state==='lost'||state==='won')startGame();else if(state==='paused')pause()};$('pauseBtn').onclick=pause;$('restartBtn').onclick=()=>{state='menu';intro()};$('resetProgress').onclick=()=>{if(confirm('이 기기에 저장된 최고 기록을 지울까요?')){localStorage.removeItem('scienceGardenBest');updateRecord()}};updateRecord();for(let i=0;i<45;i++){const el=document.createElement('div');$('grid').appendChild(el)};
 preloadSprites();fetch('questions.json').then(r=>r.json()).then(q=>{questions=q;renderPlants();ui();intro()}).catch(()=>{modal('<h2>파일을 불러오지 못했어요.</h2><p>이 게임은 ZIP을 풀고 서버에서 실행해야 합니다. README를 확인해 주세요.</p>')});let lastDraw=0;function frame(t){if(last){let dt=Math.min((t-last)/1000,.05);tick(dt)}last=t;if(t-lastDraw>=33){draw();lastDraw=t}requestAnimationFrame(frame)}requestAnimationFrame(frame);
+
+// User-triggered fullscreen, with a visible fallback for unsupported browsers.
+const fullscreenBtn=document.getElementById('fullscreenBtn');
+function updateFullscreenLabel(){const on=!!document.fullscreenElement;fullscreenBtn.textContent=on?'⤢ 전체화면 종료':'⛶ 전체화면';fullscreenBtn.setAttribute('aria-label',on?'전체화면 종료':'전체화면으로 전환')}
+fullscreenBtn.addEventListener('click',async()=>{try{if(document.fullscreenElement){await document.exitFullscreen()}else if(document.documentElement.requestFullscreen){await document.documentElement.requestFullscreen()}else{alert('이 브라우저에서는 전체화면을 지원하지 않아요.')} }catch(err){alert('전체화면 전환을 허용하지 않는 브라우저입니다.')}updateFullscreenLabel()});
+document.addEventListener('fullscreenchange',updateFullscreenLabel);
 </script></body></html>
