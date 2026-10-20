@@ -218,9 +218,9 @@ const STAGE_SCENES=[
 /* ================= 기본 설정 ================= */
 const $=id=>document.getElementById(id);
 /* 단계별 배경 그림 (바꾸려면 파일 이름만 고치면 돼요) */
-const STAGE_BG={1:'02_day_ocean_grass.png',2:'01_night_grass.png',3:'02_day_ocean_grass.png',4:'03_day_sandy_beach.png',5:'03_day_sandy_beach.png'};
+const STAGE_BG={1:'05_day_lawn.jpg',2:'04_day_roof.jpg',3:'02_day_ocean_grass.png',4:'03_day_sandy_beach.png',5:'03_day_sandy_beach.png'};
 /* 각 배경에서 체크무늬 정원이 그려진 곳 [왼쪽, 위, 오른쪽, 아래] (그림 크기에 대한 비율) */
-const BG_LAWN={'01_night_grass.png':[.19,.28,.846,1],'02_day_ocean_grass.png':[.195,.378,.95,.89],'03_day_sandy_beach.png':[.245,.325,.79,.82]};
+const BG_LAWN={'04_day_roof.jpg':[.2,.13,.875,.9],'05_day_lawn.jpg':[.21,.345,.89,.77],'01_night_grass.png':[.19,.28,.846,1],'02_day_ocean_grass.png':[.195,.378,.95,.89],'03_day_sandy_beach.png':[.245,.325,.79,.82]};
 const CUSTOM_ART = new Set(['pea','sun','wall','ice','fire','cactus','zombie','bucket']);
 const IMG=n=>{
  const m=n.match(/^(pea|sun|wall|ice|fire|cactus|zombie|bucket)_(portrait|idle|attack|hurt)\.png$/);
@@ -318,6 +318,7 @@ function overlayOpen(){return !$('overlay').classList.contains('hidden')}
 function intro(){
   state='menu';
   modal(`<h2>🌎 과학 정원에 오신 걸 환영해요!</h2>
+  <p style="margin:0;font-size:14px;color:#6b7a52">3-2 2단원 복습판 · 59문제 · 문제 사진: 교과서·실험관찰 (10월 20일 판)</p>
   <img class="scene-preview" src="${IMG('science_scene.jpg')}" alt="과학 정원 그림">
   <p>3학년 2학기 2단원 〈지구와 바다〉 복습 문제를 풀어 태양(☀️)을 모으고, 식물을 심어 좀비로부터 정원을 지켜요.</p>
   <ol class="howto">
