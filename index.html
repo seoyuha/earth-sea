@@ -198,6 +198,25 @@ html,body{height:100dvh}
 .scene-preview{max-height:24dvh}
 @media (max-height:760px){.card{min-height:70px}.card img{width:min(46px,100%)}.info{padding:3px 10px}.sunbox b{font-size:24px}.modal{padding:14px 18px}.modal p,.howto{font-size:15px;line-height:1.5}.big{padding:9px;font-size:17px}}
 @media (max-height:600px){.card .nm{font-size:11px}.card{min-height:58px}.card img{width:34px}.quizbtn{font-size:14px}.scene-preview{display:none}}
+/* ===== 대결 모드 (기능용 기본 모양) ===== */
+.mini{white-space:nowrap}.info .items:not(.hidden)~.hearts{margin-left:auto}
+.items{display:flex;gap:4px;flex-wrap:wrap}.items.hidden{display:none}
+.item{position:relative;border:2px solid #7a5bc4;border-radius:10px;background:#f1ebff;font-size:20px;line-height:1;padding:3px 6px 2px;min-width:44px;display:flex;flex-direction:column;align-items:center}
+.item small{font-size:11px;font-weight:800;color:#4b3590;white-space:nowrap}
+.item:disabled{opacity:.45}.item.lock{filter:grayscale(1)}.item.sel{outline:3px solid #ff9d00}
+.big.battle{background:linear-gradient(#e6d8ff,#b9a0f2);border-color:#6b4fb3;box-shadow:0 4px 0 #4b3590;color:#2b1a5c}
+.ztag{position:absolute;right:6%;top:2%;font-size:calc(var(--cs) * .24);z-index:3;pointer-events:none}
+.unit.zombie.ab-giant .spr{transform:scale(1.25);transform-origin:50% 100%}
+.unit.zombie.ab-boss .spr{transform:scale(1.5);transform-origin:50% 100%}
+.unit.zombie.ab-mini .spr{transform:scale(.7);transform-origin:50% 100%}
+.unit.zombie.ab-runner .spr{filter:hue-rotate(70deg)}
+.unit.zombie.ab-heal .spr{filter:hue-rotate(160deg)}
+.unit.zombie.ab-eater .spr{filter:hue-rotate(300deg) saturate(1.4)}
+.unit.zombie.shielded{filter:drop-shadow(0 0 6px #ffd54a) drop-shadow(1px 5px 2px #23471b80)}
+.unit.zombie.frozen .spr{filter:saturate(.2) brightness(1.25)}
+.unit.zombie.frozen{filter:drop-shadow(0 0 8px #8fd8ff)}
+.vs{margin:8px auto}.vs td,.vs th{padding:6px 12px}
+.spin{font-size:40px;text-align:center;animation:spin 1.6s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -208,6 +227,7 @@ html,body{height:100dvh}
     <div class="side">
       <button class="quizbtn" id="quizBtn">📘 문제 풀기<small>정답 ☀️+50</small></button>
       <div class="minis">
+        <button class="mini" id="homeBtn" aria-label="처음 화면으로">🏠 처음</button>
         <button class="mini" id="pauseBtn" aria-label="잠깐 멈추기">⏸ 멈춤</button>
         <button class="mini" id="fsBtn" aria-label="전체화면">⛶</button>
       </div>
@@ -216,6 +236,7 @@ html,body{height:100dvh}
   <div class="info">
     <span class="stage" id="stageTitle">1단계 · 지구를 둘러싼 대기</span>
     <div class="meter"><div class="bar"><i id="progress"></i></div><span id="status">좀비 0/12</span></div>
+    <div class="items hidden" id="items" aria-label="대결 아이템"></div>
     <span class="hearts" id="lives" aria-label="남은 목숨"></span>
     <span class="score">⭐ <b id="score">0</b></span>
   </div>
@@ -318,7 +339,7 @@ function renderDeck(){
   syncDeck();
 }
 function choose(id){
-  selected=id; sound(520,.06,'triangle'); syncDeck();
+  if(bt)bt.prevSel=id; selected=id; sound(520,.06,'triangle'); syncDeck();
   const p=PLANTS.find(x=>x.id===id);
   if(id==='dig') say('🧤 뽑을 식물을 누르세요. 태양을 절반 돌려받아요.');
   else if(p&&sun<p.cost){ say('태양이 '+(p.cost-sun)+' 모자라요. 📘 문제를 풀어 태양을 모아요!'); nudgeQuiz(); }
@@ -337,9 +358,18 @@ function nudgeQuiz(){const q=$('quizBtn');q.classList.remove('shake');void q.off
 function ui(){
   $('sun').textContent=sun; $('score').textContent=score;
   $('lives').textContent='❤️'.repeat(Math.max(0,lives))+'🤍'.repeat(Math.max(0,5-lives));
+  if(mode==='battle'&&bt){
+    $('stageTitle').textContent=`⚔️ ${bt.round}/${BATTLE_ROUNDS}라운드 · vs ${bt.opp?bt.opp.nick:'…'}`;
+    const left=Math.max(0,bt.P.goal-bt.spawned)+zombies.length+bt.incoming.length;
+    $('status').textContent=`남은 좀비 ${left} · 보낸 좀비 ${bt.sent}${bt.dbl>0?' ✨×2':''}`;
+    $('progress').style.width=Math.min(100,bt.spawned/bt.P.goal*100)+'%';
+    syncItems();
+  }else{
   $('stageTitle').textContent=`${stage+1}단계 · ${STAGES[stage]}`;
   $('status').textContent=`물리친 좀비 ${killed}/${SPAWN_GOAL}`;
   $('progress').style.width=Math.min(100,killed/SPAWN_GOAL*100)+'%';
+  }
+  { const sm=$('quizBtn').querySelector('small'); const t=mode==='battle'&&bt?`정답 ⭐+${quizPts()} · 🧟 보내기`:'정답 ☀️+50'; if(sm&&sm.textContent!==t)sm.textContent=t; }
   const q=$('quizBtn'); q.disabled=state!=='playing'||quizOpen;
   q.classList.toggle('call',state==='playing'&&sun<100);
   $('pauseBtn').textContent=state==='paused'?'▶ 계속':'⏸ 멈춤';
@@ -357,7 +387,7 @@ function closeModal(){$('overlay').classList.add('hidden');ui()}
 function overlayOpen(){return !$('overlay').classList.contains('hidden')}
 
 function intro(){
-  state='menu';
+  state='menu'; mode='adv'; if(typeof renderItems==='function')renderItems();
   modal(`<h2>🌎 과학 정원에 오신 걸 환영해요!</h2>
   <p style="margin:0;font-size:14px;color:#6b7a52">3-2 2단원 복습판 · 10단계 · ${questions.length}문제 · 문제 사진: 교과서·실험관찰 (11월 3일 판)</p>
   <img class="scene-preview" src="${IMG('science_scene.jpg')}" alt="과학 정원 그림">
@@ -372,7 +402,7 @@ function intro(){
   <label>별명 <input id="pNick" maxlength="10" placeholder="예: 바다탐험가" value="${esc(player.nick)}" autocomplete="off"></label></div>
   <p class="warn" id="pWarn"></p>
   <div class="btnrow"><button class="big alt" onclick="help()">📖 식물 알아보기</button><button class="big alt" onclick="openRank('grade')">🏅 랭킹</button></div>
-  <div class="btnrow"><button class="big" onclick="begin()">🌱 모험 시작! (전체화면)</button></div>
+  <div class="btnrow"><button class="big" onclick="begin()">🌱 모험 시작! (전체화면)</button><button class="big battle" onclick="begin('battle')">⚔️ 대결 (우리 반 친구와)</button></div>
   <p class="teach"><button onclick="teacherLogin()">👩‍🏫 교사 관리</button></p>`);
 }
 function help(){
@@ -389,11 +419,11 @@ function pauseMenu(){
   if(state==='playing')state='paused';
   ui();
   modal(`<h2>⏸ 잠깐 멈췄어요</h2>
-  <div class="stats"><span>${stage+1}단계</span><span>☀️ ${sun}</span><span>⭐ ${score}</span><span>정답 ${correct}개</span></div>
+  <div class="stats"><span>${mode==='battle'?bt.round+'라운드':stage+1+'단계'}</span><span>☀️ ${sun}</span><span>⭐ ${score}</span><span>정답 ${correct}개</span></div>
   <label class="toggle"><input type="checkbox" id="sndChk" ${soundOn?'checked':''}> 효과음 켜기</label>
   <p style="font-size:15px">🙋 ${esc(player.cls)} · ${esc(player.nick)}</p>
   <div class="btnrow"><button class="big" onclick="resume()">▶ 계속하기</button></div>
-  <div class="btnrow"><button class="big alt" onclick="help()">📖 식물 알아보기</button><button class="big alt" onclick="confirmRestart()">↻ 처음부터</button></div>
+  <div class="btnrow"><button class="big alt" onclick="help()">📖 식물 알아보기</button>${mode==='battle'?'':'<button class="big alt" onclick="confirmRestart()">↻ 처음부터</button>'}<button class="big alt" onclick="homeAsk()">🏠 처음으로</button></div>
   <div class="btnrow"><button class="big alt" onclick="openRank('me')">🏅 랭킹 보기</button></div>`);
   $('sndChk').onchange=e=>{soundOn=e.target.checked;try{localStorage.setItem('sgdSound',soundOn?'1':'0')}catch(err){}};
 }
@@ -407,17 +437,17 @@ function confirmRestart(){modal(`<h2>처음부터 다시 할까요?</h2><p>지�
    비워 두면(null) 이 기기에 저장된 기록끼리 랭킹을 보여 줘요. */
 const FIREBASE_CONFIG=null;   /* 예: {apiKey:"...",authDomain:"...",databaseURL:"https://...firebasedatabase.app",projectId:"..."} */
 const RANK_PATH='scienceGarden/grade3_unit2';
-const TEACHER_PIN='0000';     /* 선생님 기록 초기화 비밀번호 */
+const TEACHER_PIN='finel9932!';  /* 교사 관리 비밀번호 */
 const CLASSES=['3학년 1반','3학년 2반','3학년 3반','3학년 4반','3학년 5반','3학년 6반','3학년 7반'];
 function esc(t){return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 let player={cls:CLASSES[0],nick:''};
 try{const p=JSON.parse(localStorage.getItem('sgdPlayer')||'null');if(p&&p.nick)player=p}catch(e){}
-function begin(){
+function begin(m){
   const nick=$('pNick').value.trim().replace(/\s+/g,' ');
   if(nick.length<1){$('pWarn').textContent='별명을 써 주세요. (랭킹에 이 이름이 나와요)';$('pNick').focus();return}
   player={cls:$('pCls').value,nick:nick.slice(0,10)};
   try{localStorage.setItem('sgdPlayer',JSON.stringify(player))}catch(e){}
-  startGame();
+  if(m==='battle')startBattle(); else startGame();
 }
 let fb=null,fbReady=null;
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
@@ -460,12 +490,15 @@ function rankRows(list,hl){
 let rankBack=null;
 async function openRank(tab){
   if(!rankBack){rankBack=state==='menu'?'intro':state==='paused'?'pause':'end'; if(rankBack==='end')rankBack=$('modal').innerHTML}
-  const tabs=[['grade','학년 TOP 10'],['class','우리 반 TOP 10'],['me','내 기록']];
+  const tabs=[['grade','학년 TOP 10'],['class','우리 반 TOP 10'],['me','내 기록'],['battle','⚔️ 대결']];
   modal(`<h2>🏅 과학 정원 랭킹</h2><p class="src" id="rankSrc">${FIREBASE_CONFIG?'학년 전체 기록':'이 기기에 저장된 기록'}</p>
    <div class="tabs">${tabs.map(([k,t])=>`<button class="${k===tab?'on':''}" onclick="openRank('${k}')">${t}</button>`).join('')}</div>
    <div id="rankBody"><p class="empty">불러오는 중…</p></div>
    <div class="btnrow"><button class="big" onclick="closeRank()">돌아가기</button></div>
    <p class="teach"><button onclick="teacherLogin()">👩‍🏫 교사 관리</button></p>`);
+  if(tab==='battle'){const b=bestPerPlayer(await fetchBattle()),body=$('rankBody');if(!body)return;
+    const mine=b.findIndex(r=>r.cls===player.cls&&r.nick===player.nick);
+    body.innerHTML=battleRows(b.slice(0,10),true)+(mine>=0?`<p class="myrank">🙋 내 대결 순위: 학년 <b>${mine+1}위</b> / ${b.length}명 · 우리 반 <b>${b.filter(r=>r.cls===player.cls).findIndex(r=>r.nick===player.nick)+1}위</b></p>`:'');return}
   const all=await fetchRecs(), best=bestPerPlayer(all), body=$('rankBody'); if(!body)return;
   if(tab==='grade') body.innerHTML=rankRows(best.slice(0,10),true)+myLine(best);
   else if(tab==='class') body.innerHTML=`<p class="src">${esc(player.cls)}</p>`+rankRows(best.filter(r=>r.cls===player.cls).slice(0,10),true);
@@ -481,7 +514,7 @@ function myLine(best){const i=best.findIndex(r=>r.cls===player.cls&&r.nick===pla
 function closeRank(){const b=rankBack;rankBack=null;if(b==='intro')intro();else if(b==='pause')pauseMenu();else{modal(b)}}
 function teacherReset(){
   const body=$('rankBody');
-  body.innerHTML=`<p>선생님 비밀번호를 넣으면 ${FIREBASE_CONFIG?'<b>학년 전체</b>':'이 기기의'} 기록이 모두 지워져요.</p><input id="pin" type="password" inputmode="numeric" placeholder="비밀번호"> <button class="big alt" style="min-width:auto;padding:8px 14px" onclick="doReset()">지우기</button><p class="warn" id="pinMsg"></p>`;
+  body.innerHTML=`<p>선생님 비밀번호를 넣으면 ${FIREBASE_CONFIG?'<b>학년 전체</b>':'이 기기의'} 기록이 모두 지워져요.</p><input id="pin" type="password" autocomplete="off" autocapitalize="off" placeholder="비밀번호"> <button class="big alt" style="min-width:auto;padding:8px 14px" onclick="doReset()">지우기</button><p class="warn" id="pinMsg"></p>`;
 }
 async function doReset(){
   if($('pin').value!==TEACHER_PIN){$('pinMsg').textContent='비밀번호가 달라요.';return}
@@ -497,18 +530,21 @@ let teacherOn=false;
 function teacherLogin(){
   if(teacherOn){teacherPanel('all');return}
   modal(`<h2>👩‍🏫 교사 관리</h2><p>선생님 비밀번호를 넣어 주세요.</p>
-   <div class="who"><label>비밀번호 <input id="tpin" type="password" inputmode="numeric" autocomplete="off"></label></div><p class="warn" id="tmsg"></p>
+   <div class="who"><label>비밀번호 <input id="tpin" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></label></div><p class="warn" id="tmsg"></p>
    <div class="btnrow"><button class="big alt" onclick="intro()">돌아가기</button><button class="big" onclick="checkPin()">들어가기</button></div>`);
   $('tpin').focus(); $('tpin').onkeydown=e=>{if(e.key==='Enter')checkPin()};
 }
 function checkPin(){if($('tpin').value!==TEACHER_PIN){$('tmsg').textContent='비밀번호가 달라요.';return}teacherOn=true;teacherPanel('all')}
 async function teacherPanel(view){
   state='menu';
-  const opts=[['all','학년 전체'],...CLASSES.map(c=>[c,c.replace('3학년 ','')]),['recent','최근 기록']];
+  const opts=[['all','학년 전체'],...CLASSES.map(c=>[c,c.replace('3학년 ','')]),['recent','최근 기록'],['battle','⚔️ 대결']];
   modal(`<h2>👩‍🏫 교사 관리 · 랭킹</h2><p class="src">${FIREBASE_CONFIG?'학년 전체 기록 (모든 기기)':'이 기기에 저장된 기록'}</p>
    <div class="tabs wrap">${opts.map(([k,t])=>`<button class="${k===view?'on':''}" onclick="teacherPanel('${k}')">${t}</button>`).join('')}</div>
    <div id="tBody"><p class="empty">불러오는 중…</p></div>
    <div class="btnrow"><button class="big alt" onclick="teacherClear()">🗑 기록 초기화</button><button class="big alt" onclick="teacherOn=false;intro()">🔒 나가기</button><button class="big" onclick="intro()">처음 화면</button></div>`);
+  if(view==='battle'){const ba=await fetchBattle(),b=bestPerPlayer(ba),body=$('tBody');if(!body)return;
+    const sum=CLASSES.map(c=>`<span>${c.replace('3학년 ','')} ${b.filter(r=>r.cls===c).length}명</span>`).join('');
+    body.innerHTML=`<div class="stats small">${sum}</div>`+(b.length?'<div class="tscroll">'+battleRows(b.slice(0,60),false,ba)+'</div>':'<p class="empty">아직 대결 기록이 없어요.</p>');return}
   const all=await fetchRecs(), best=bestPerPlayer(all), body=$('tBody'); if(!body)return;
   if(view==='recent'){
     const rec=all.slice().sort((a,b)=>b.ts-a.ts).slice(0,40);
@@ -526,8 +562,8 @@ function teacherClear(){
    <div class="btnrow"><button class="big alt" onclick="teacherPanel('all')">아니요</button><button class="big" onclick="teacherDoClear()">네, 모두 지워요</button></div><p class="warn" id="pinMsg"></p>`;
 }
 async function teacherDoClear(){
-  try{localStorage.removeItem('sgdRank');localStorage.removeItem('scienceGardenBest')}catch(e){}
-  const db=await useFirebase(); if(db){try{await db.ref(RANK_PATH).remove()}catch(e){$('pinMsg').textContent='학년 기록을 지우지 못했어요. 인터넷 연결을 확인해 주세요.';return}}
+  try{localStorage.removeItem('sgdRank');localStorage.removeItem('scienceGardenBest');localStorage.removeItem('sgdBattle')}catch(e){}
+  const db=await useFirebase(); if(db){try{await db.ref(RANK_PATH).remove();await db.ref(BATTLE_RANK).remove();await db.ref(BATTLE_PATH).remove()}catch(e){$('pinMsg').textContent='학년 기록을 지우지 못했어요. 인터넷 연결을 확인해 주세요.';return}}
   $('tBody').innerHTML='<p class="empty">기록을 모두 지웠어요.</p>';
 }
 
@@ -537,20 +573,22 @@ function bestText(){const d=getBest();return d.score?`🏅 이 기기의 최고 
 function saveRecord(){try{const d=getBest();localStorage.setItem('scienceGardenBest',JSON.stringify({score:Math.max(score,d.score||0),stage:Math.max(stage+1,d.stage||0)}))}catch(e){}}
 
 /* ================= 게임 흐름 ================= */
-function startGame(){goFull();submitted=false;rankBack=null;sun=150;lives=5;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
+function startGame(){goFull();mode='adv';renderItems();submitted=false;rankBack=null;sun=150;lives=5;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
 function retryStage(){goFull();submitted=false;lives=5;sun=Math.max(sun,150);closeModal();startStage()}
 /* 단계 배경에서 잔디밭이 그려진 곳 [왼쪽, 위, 오른쪽, 아래] */
 const LAWN={};for(const k in STAGE_BG)LAWN[k-1]=BG_LAWN[STAGE_BG[k]];
+function setBg(idx){
+  const bg=IMG(`stage_${idx+1}_background.jpg`);
+  $('board').style.backgroundImage=`url("${bg}")`; $('scene').style.backgroundImage=`url("${bg}")`;
+  /* 그림 속 잔디밭 위치(가로·세로 비율): 이 영역이 정원 칸에 꼭 맞게 보여요 */
+  const L=LAWN[idx]||[0,.58,1,1], w=L[2]-L[0], h=L[3]-L[1], b=$('board').style;
+  b.backgroundSize=`${100/w}% ${100/h}%`;
+  b.backgroundPosition=`${w<1?L[0]/(1-w)*100:0}% ${h<1?L[1]/(1-h)*100:0}%`;
+}
 function startStage(){
   SPAWN_GOAL=10+Math.floor(stage/2);plants=[];zombies=[];shots=[];elapsed=0;spawned=0;killed=0;mowers=[true,true,true,true,true];quizOpen=false;
   state='playing'; sun=Math.max(sun,100);
-  const bg=IMG(`stage_${stage+1}_background.jpg`);
-  $('board').style.backgroundImage=`url("${bg}")`; $('scene').style.backgroundImage=`url("${bg}")`;
-  { /* 그림 속 잔디밭 위치(가로·세로 비율): 이 영역이 정원 칸에 꼭 맞게 보여요 */
-    const L=LAWN[stage]||[0,.58,1,1], w=L[2]-L[0], h=L[3]-L[1], b=$('board').style;
-    b.backgroundSize=`${100/w}% ${100/h}%`;
-    b.backgroundPosition=`${w<1?L[0]/(1-w)*100:0}% ${h<1?L[1]/(1-h)*100:0}%`;
-  }
+  setBg(stage);
   draw(); ui(); fit();
   banner(`${stage+1}단계 시작!`,'#3f7d2c');
   setTimeout(()=>{if(state==='playing')say(innerHeight>innerWidth?'📱 화면을 가로로 돌리면 정원이 더 크게 보여요!':'좀비가 오기 전에 식물을 심어 준비해요!')},1700);
@@ -586,21 +624,22 @@ function questionArt(q){if(q.img&&IMG(q.img))return `<img class="quiz-art quiz-p
 function quiz(){
   if(state!=='playing'||quizOpen)return;
   quizOpen=true;
-  const pool=stage===STAGES.length-1?questions:questions.filter(q=>q.stage===stage+1);
+  const pool=(mode==='battle'||stage===STAGES.length-1)?questions:questions.filter(q=>q.stage===stage+1);
   let cand=pool.filter(q=>!asked.has(q)); if(!cand.length){pool.forEach(q=>asked.delete(q));cand=pool}
   const q=cand[Math.random()*cand.length|0]; asked.add(q);
   const order=shuffle(q.options.map((_,i)=>i));   /* 보기 순서를 섞어요 */
-  modal(`<h2>🔍 과학 탐험 퀴즈</h2><p style="margin:0;font-size:15px">${stage+1}단계 · ${STAGES[stage]}</p>${questionArt(q)}
+  modal(`<h2>🔍 과학 탐험 퀴즈</h2><p style="margin:0;font-size:15px">${mode==='battle'?`⚔️ ${bt.round}라운드 · 맞히면 ⭐ +${quizPts()} 그리고 상대에게 좀비를 보내요`:`${stage+1}단계 · ${STAGES[stage]}`}</p>${questionArt(q)}
   <h3>${q.q}</h3><div class="answers">${order.map((oi,k)=>`<button class="answer" data-a="${oi}"><span class="no">${k+1}</span><span>${q.options[oi]}</span></button>`).join('')}</div><div id="result"></div>`);
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>answer(q,+b.dataset.a,order));
 }
 function answer(q,n,order){
   if($('result').dataset.done)return; $('result').dataset.done='1';
   const good=n===q.answer;
-  if(good){addSun(50);correct++;score+=100;sound(700);sound(940,.18)}else{addSun(15);wrong++;sound(250)}
+  const pts=mode==='battle'?quizPts():100;
+  if(good){addSun(50);correct++;score+=pts;sound(700);sound(940,.18);if(mode==='battle')sendZombie()}else{addSun(15);wrong++;sound(250)}
   document.querySelectorAll('[data-a]').forEach(b=>{b.disabled=true;if(+b.dataset.a===q.answer)b.classList.add('correct');else if(+b.dataset.a===n)b.classList.add('wrong')});
   const no=order.indexOf(q.answer)+1;
-  $('result').innerHTML=`<div class="explain"><b>${good?'🎉 정답이에요! ☀️ +50':'🌱 괜찮아요! 정답은 '+no+'번이에요. ☀️ +15'}</b><br>${q.explain}</div>
+  $('result').innerHTML=`<div class="explain"><b>${good?'🎉 정답이에요! ☀️ +50 · ⭐ +'+pts+(mode==='battle'?' · 🧟 상대에게 좀비를 보냈어요!':''):'🌱 괜찮아요! 정답은 '+no+'번이에요. ☀️ +15'}</b><br>${q.explain}</div>
   <div class="btnrow"><button class="big" id="continue">정원으로 돌아가기</button></div>`;
   $('continue').onclick=()=>{quizOpen=false;closeModal()};
   ui();
@@ -611,6 +650,10 @@ function cellAt(e){const r=$('board').getBoundingClientRect();return {col:Math.f
 function plantAt(col,row){
   if(state!=='playing'||quizOpen||overlayOpen())return;
   if(col<0||col>8||row<0||row>4)return;
+  if(String(selected).startsWith('item:')){
+    const it=ITEMS.find(i=>'item:'+i.id===selected); selected=(bt&&bt.prevSel)||'pea'; syncDeck(); syncItems();
+    if(it&&bt&&sun>=it.cost&&!(bt.cd[it.id]>0))applyItem(it,col,row); return;
+  }
   const occupied=plants.find(t=>t.col===col&&t.row===row);
   if(selected==='dig'){
     if(!occupied){say('🧤 식물이 있는 칸을 눌러 주세요.');return}
@@ -639,7 +682,9 @@ function showGhost(e){
   const occ=plants.find(t=>t.col===col&&t.row===row);
   const ok= selected==='dig' ? !!occ : (!occ || (!occ.fused && FUSE[occ.id+'+'+selected]));
   g.style.left=col*100/9+'%'; g.style.top=row*20+'%';
-  g.style.backgroundImage= selected==='dig'?'none':`url("${IMG(selected+'_portrait.png')}")`;
+  const isItem=String(selected).startsWith('item:');
+  g.style.backgroundImage= (selected==='dig'||isItem)?'none':`url("${IMG(selected+'_portrait.png')}")`;
+  if(isItem){g.classList.remove('no');g.classList.remove('hidden');return}
   g.classList.toggle('no',!ok); g.classList.remove('hidden');
 }
 
@@ -658,8 +703,9 @@ function tick(dt){
   for(const z of zombies)z.bite=Math.max(0,z.bite-dt);
   if(state!=='playing'||quizOpen||overlayOpen())return;
   elapsed+=dt;
-  const gap=Math.max(3.3,3.8-LV()*.25);
-  if(spawned<SPAWN_GOAL&&elapsed>=spawned*gap+PREP_TIME)spawn();
+  if(mode==='battle')battleTick(dt);
+  else{const gap=Math.max(3.3,3.8-LV()*.25);
+  if(spawned<SPAWN_GOAL&&elapsed>=spawned*gap+PREP_TIME)spawn();}
   for(const p of plants){
     p.age+=dt;p.cool-=dt;
     if(p.id==='sun'&&p.age>=12){addSun(25);p.age=0;p.anim=.6;floatText(p.col,p.row,'☀️ +25')}
@@ -675,16 +721,18 @@ function tick(dt){
   for(const s of shots){
     s.x+=s.speed*dt;
     const hit=zombies.find(z=>!z.dead&&z.row===s.row&&Math.abs(z.x-s.x)<.35);
-    if(hit){hit.hp-=s.damage;hit.hurt=.25;if(s.ice)hit.slow=3;if(s.fire)hit.hp-=6;s.dead=true;
-      if(hit.hp<=0){hit.dead=true;killed++;score+=20;floatText(Math.min(8,hit.x),hit.row,'+20')}}
+    if(hit){s.dead=true;hurtZ(hit,s.damage+(s.fire?6:0),s.ice)}
   }
   shots=shots.filter(s=>!s.dead&&s.x<9.5);
   for(const z of zombies){
     if(z.dead)continue;
     z.slow=Math.max(0,z.slow-dt);z.hurt=Math.max(0,z.hurt-dt);
-    const block=plants.find(p=>p.row===z.row&&Math.abs(z.x-(p.col+.5))<.5);
-    if(block){block.hp-=dt*19;block.hurt=.3;z.bite=.3;if(block.hp<=0){plants.splice(plants.indexOf(block),1);say('식물이 먹혔어요! 🌰 튼튼 호두로 막아 보세요.')}}
-    else z.x-=z.speed*dt/60*(z.slow?.45:1);
+    if(z.frozen>0){z.frozen-=dt;continue}
+    if(z.ab==='heal'){z.hc=(z.hc||3)-dt;if(z.hc<=0){z.hc=3;let n=0;zombies.forEach(o=>{if(!o.dead&&o!==z&&Math.abs(o.row-z.row)<=1&&Math.abs(o.x-z.x)<1.6&&o.hp<o.max){o.hp=Math.min(o.max,o.hp+30*(bt?bt.P.hp:1));n++}});if(n)floatText(Math.min(8,z.x),z.row,'💚')}}
+    let block=plants.find(p=>p.row===z.row&&Math.abs(z.x-(p.col+.5))<.5);
+    if(block&&z.ab==='jump'&&!z.jumped){z.jumped=true;z.x=block.col-.06;block=null;floatText(Math.max(0,z.x),z.row,'🦘')}
+    if(block){block.hp-=dt*19*(z.bitex||1);block.hurt=.3;z.bite=.3;if(block.hp<=0){plants.splice(plants.indexOf(block),1);say('식물이 먹혔어요! 🌰 튼튼 호두로 막아 보세요.')}}
+    else z.x-=z.speed*dt/60*(z.slow&&z.ab!=='boss'?.45:1);
     if(z.x<0){
       if(mowers[z.row]){
         mowers[z.row]=false; sound(300,.3,'square');
@@ -692,13 +740,16 @@ function tick(dt){
         floatText(.3,z.row,'🚜 방어!');
       }else{
         z.dead=true;lives--;sound(180,.3);
-        if(lives<=0){lose();break}
+        if(lives<=0){if(mode==='battle')roundEnd(false);else lose();break}
         say('💥 좀비가 정원에 들어왔어요! ❤️ '+lives+'개 남았어요.');
       }
     }
   }
   zombies=zombies.filter(z=>!z.dead);
-  if(state==='playing'&&spawned>=SPAWN_GOAL&&zombies.length===0)nextStage();
+  if(state==='playing'){
+    if(mode==='battle'){if(bt.spawned>=bt.P.goal&&zombies.length===0&&!bt.incoming.length)roundEnd(true)}
+    else if(spawned>=SPAWN_GOAL&&zombies.length===0)nextStage();
+  }
   ui();
 }
 
@@ -735,6 +786,8 @@ function draw(){
     const el=unitEl(z,'zombie'); alive.add(el);
     el.style.left=z.x*100/9+'%'; el.style.top=z.row*20+'%';
     el.classList.toggle('slow',z.slow>0);
+    if(z.ab&&!el.dataset.ab){el.dataset.ab=z.ab;el.classList.add('ab-'+z.ab);const tg=ZT[z.ab]&&ZT[z.ab].tag;if(tg){const b=document.createElement('span');b.className='ztag';b.textContent=tg;el.appendChild(b)}}
+    el.classList.toggle('frozen',z.frozen>0); el.classList.toggle('shielded',z.shield>0);
     setSprite(el,z.id,z.hurt>0?'hurt':z.bite>0?'attack':'idle',145);
     el.querySelector('.hp i').style.width=Math.max(0,z.hp/z.max*100)+'%';
   }
@@ -746,11 +799,386 @@ function draw(){
   $('board').querySelectorAll('.unit,.shot').forEach(el=>{if(!alive.has(el))el.remove()});
 }
 
+/* =====================================================================
+   ⚔️ 대결 모드
+   - 라운드마다 같은 반의 다른 친구와 짝을 지어요. (FIREBASE_CONFIG가 있어야 여러 태블릿이 이어져요)
+   - 문제를 맞히거나 좀비를 4마리 물리칠 때마다 상대 정원으로 좀비 1마리를 보내요.
+   - 30라운드까지: 라운드가 오를수록 준비 시간은 짧아지고, 좀비는 많아지고 세지고,
+     새 좀비 능력과 새 아이템이 열리고, 문제·좀비 점수도 함께 올라가요.
+   - 친구가 없거나 온라인 설정 전이면 🤖 연습 로봇과 대결해요.
+   ===================================================================== */
+let mode='adv', bt=null;
+const BATTLE_ROUNDS=30, KILLS_PER_SEND=4;
+const BATTLE_PATH='scienceGarden/grade3_unit2_live';     /* 짝짓기·좀비 보내기 (실시간) */
+const BATTLE_RANK='scienceGarden/grade3_unit2_battle';   /* 대결 랭킹 */
+const PID=(()=>{const r=()=>Math.random().toString(36).slice(2,10);try{let p=sessionStorage.getItem('sgdPid');if(!p){p=r();sessionStorage.setItem('sgdPid',p)}return p}catch(e){return r()}})();
+
+/* 라운드별 설정 (r=1~30) */
+function RP(r){
+  const k=r-1;
+  return {
+    prep:Math.max(2,10-k*.28),          /* 첫 좀비가 오기까지 준비 시간(초): 10초 → 2초 */
+    goal:6+Math.round(k*.85),           /* 이 라운드에 나오는 좀비 수: 6 → 31 */
+    gap:Math.max(1.15,4.2-k*.105),      /* 좀비 사이 간격(초): 4.2 → 1.15 */
+    hp:1+k*.055,                        /* 좀비 체력 배율: 1 → 2.6 */
+    sp:k*.18,                           /* 좀비 속도 더하기 */
+    mult:1+k*.1                         /* 점수 배율: 1 → 3.9 */
+  };
+}
+const quizPts=()=>bt?Math.round(100*bt.P.mult/10)*10:100;   /* 문제 점수: 100 → 390 */
+const killPts=()=>mode==='battle'&&bt?Math.round(20*bt.P.mult):20;  /* 좀비 점수: 20 → 78 */
+
+/* 좀비 종류와 능력 */
+const ZT={
+  basic :{sp:'zombie',hp:120,speed:10,name:'좀비'},
+  bucket:{sp:'bucket',hp:240,speed:7, name:'양동이 좀비',tag:'🪣',desc:'체력이 두 배예요'},
+  runner:{sp:'zombie',hp:80, speed:19,name:'달리기 좀비',tag:'💨',desc:'아주 빨리 달려와요'},
+  shield:{sp:'bucket',hp:160,speed:8, shield:120,name:'방패 좀비',tag:'🛡️',desc:'방패가 먼저 공격을 막아요'},
+  jump  :{sp:'zombie',hp:130,speed:11,name:'점프 좀비',tag:'🦘',desc:'처음 만난 식물을 뛰어넘어요'},
+  heal  :{sp:'zombie',hp:150,speed:8, name:'치료 좀비',tag:'💚',desc:'가까운 좀비를 치료해요'},
+  split :{sp:'bucket',hp:200,speed:8, name:'분열 좀비',tag:'🧬',desc:'쓰러지면 꼬마 좀비 2마리로 나뉘어요'},
+  mini  :{sp:'zombie',hp:45, speed:16,name:'꼬마 좀비'},
+  eater :{sp:'zombie',hp:170,speed:9, bitex:3,name:'먹보 좀비',tag:'😋',desc:'식물을 3배 빨리 먹어요'},
+  giant :{sp:'bucket',hp:600,speed:5, bitex:5,name:'거대 좀비',tag:'🏋️',desc:'아주 튼튼하고 식물을 금방 부숴요'},
+  boss  :{sp:'bucket',hp:2400,speed:4,bitex:8,name:'왕 좀비',tag:'👑',desc:'30라운드 마지막 보스! 느려지지 않아요'}
+};
+/* [열리는 라운드, 좀비] */
+const UNLOCK=[[1,'basic'],[3,'bucket'],[5,'runner'],[8,'shield'],[11,'jump'],[14,'heal'],[17,'split'],[20,'eater'],[24,'giant'],[30,'boss']];
+/* 아이템 (태양으로 사요, 쓰고 나면 잠깐 기다려야 해요) */
+const ITEMS=[
+  {id:'freeze',r:4, ic:'❄️',name:'얼음 폭풍',cost:100,cd:20,desc:'모든 좀비를 4초 동안 얼려요'},
+  {id:'bomb',  r:7, ic:'💣',name:'폭탄',cost:150,cd:18,desc:'누른 칸 둘레(3×3)에 큰 피해',target:true},
+  {id:'guard', r:10,ic:'🛡️',name:'튼튼 보호막',cost:100,cd:25,desc:'모든 식물 체력 +120'},
+  {id:'mower', r:13,ic:'🚜',name:'잔디깎이 수리',cost:125,cd:40,desc:'잔디깎이를 모두 다시 준비해요'},
+  {id:'bolt',  r:16,ic:'⚡',name:'번개',cost:175,cd:22,desc:'모든 좀비에게 큰 피해'},
+  {id:'push',  r:19,ic:'🌪️',name:'회오리',cost:150,cd:30,desc:'모든 좀비를 뒤로 밀어내요'},
+  {id:'heart', r:22,ic:'💗',name:'생명 회복',cost:200,cd:45,desc:'❤️ 1개를 되찾아요'},
+  {id:'double',r:25,ic:'✨',name:'두 배 보내기',cost:150,cd:40,desc:'15초 동안 좀비를 2마리씩 보내요'}
+];
+
+function makeZ(type,row,x){
+  const t=ZT[type]||ZT.basic, P=bt?bt.P:RP(1), hp=Math.round(t.hp*P.hp);
+  return {id:t.sp,ab:type==='basic'?'':type,x,row,hp,max:hp,speed:t.speed+P.sp,shield:t.shield?Math.round(t.shield*P.hp):0,bitex:t.bitex||1,slow:0,bite:0,hurt:0,frozen:0,child:type==='mini'};
+}
+function pickType(){
+  const r=bt.round, pool=UNLOCK.filter(u=>u[0]<=r&&u[1]!=='boss').map(u=>u[1]);
+  if(Math.random()<Math.max(.25,.6-r*.015))return 'basic';
+  /* 새로 열린 좀비가 조금 더 자주 나와요 */
+  const w=pool.map((_,i)=>1+i*.35), sum=w.reduce((a,b)=>a+b,0); let x=Math.random()*sum;
+  for(let i=0;i<pool.length;i++){x-=w[i];if(x<=0)return pool[i]}
+  return pool[pool.length-1];
+}
+function spawnB(type){zombies.push(makeZ(type,Math.random()*5|0,9.1))}
+
+/* 좀비 맞히기 · 물리치기 (모험 모드도 같이 써요) */
+function hurtZ(z,dmg,ice){
+  if(z.dead)return;
+  if(z.shield>0){const a=Math.min(z.shield,dmg);z.shield-=a;dmg-=a}
+  z.hp-=dmg; z.hurt=.25; if(ice&&z.ab!=='boss')z.slow=3;
+  if(z.hp<=0)killZ(z);
+}
+function killZ(z){
+  z.dead=true; killed++; const p=killPts(); score+=p; floatText(Math.min(8,z.x),z.row,'+'+p);
+  if(mode!=='battle'||!bt)return;
+  bt.kills++;
+  if(z.ab==='split')for(const dx of [-.2,.3])zombies.push(makeZ('mini',z.row,Math.min(9.1,z.x+dx)));
+  if(bt.kills%KILLS_PER_SEND===0)sendZombie();
+}
+
+/* 상대에게 좀비 보내기 · 받기 */
+function sendZombie(){
+  if(!bt||!bt.opp)return;
+  const n=bt.dbl>0?2:1;
+  for(let i=0;i<n;i++){
+    const t=pickType(); bt.sent++;
+    if(!bt.opp.bot&&bt.ref){try{bt.ref.child('send/'+bt.opp.id).push({t,from:PID}).catch(()=>{})}catch(e){}}
+  }
+  say(`🧟 ${bt.opp.nick}에게 좀비 ${n}마리를 보냈어요!`);
+}
+function receive(t){
+  if(!bt||!(state==='playing'||state==='paused'))return;
+  if(!ZT[t]||t==='boss'||t==='mini')t='basic';
+  bt.incoming.push(t);
+}
+
+/* 라운드 진행 (tick 안에서 불러요) */
+function battleTick(dt){
+  const P=bt.P;
+  if(bt.spawned<P.goal&&elapsed>=bt.spawned*P.gap+P.prep){
+    const last=bt.spawned===P.goal-1;
+    spawnB(bt.round===BATTLE_ROUNDS&&last?'boss':pickType()); bt.spawned++;
+    if(bt.spawned===1)banner('좀비가 와요!','#e2503a');
+    else if(last)banner(bt.round===BATTLE_ROUNDS?'👑 왕 좀비가 나타났어요!':'마지막 좀비!','#e2503a');
+  }
+  if(bt.incoming.length&&elapsed>=Math.min(P.prep,4)){
+    const t=bt.incoming.shift(); spawnB(t); sound(240,.2,'square');
+    banner(`⚔️ ${bt.opp.nick}의 ${ZT[t].name}!`,'#7a3fd1');
+  }
+  if(bt.opp&&bt.opp.bot&&bt.spawned<P.goal){
+    bt.botT-=dt;
+    if(bt.botT<=0&&elapsed>P.prep){bt.botT=Math.max(5,16-bt.round*.35)*(.7+Math.random()*.6);receive(pickType())}
+  }
+  bt.dbl=Math.max(0,bt.dbl-dt);
+  for(const k in bt.cd)bt.cd[k]=Math.max(0,bt.cd[k]-dt);
+}
+
+/* ---------- 아이템 ---------- */
+function renderItems(){
+  const el=$('items');
+  if(mode!=='battle'||!bt){el.classList.add('hidden');el.innerHTML='';return}
+  el.classList.remove('hidden');
+  el.innerHTML=ITEMS.map(it=>`<button class="item" data-item="${it.id}" title="${it.name}: ${it.desc}" aria-label="${it.name}">${it.ic}<small></small></button>`).join('');
+  el.querySelectorAll('[data-item]').forEach(b=>b.onclick=e=>{e.stopPropagation();useItem(b.dataset.item)});
+  syncItems();
+}
+function syncItems(){
+  if(!bt)return;
+  document.querySelectorAll('[data-item]').forEach(b=>{
+    const it=ITEMS.find(i=>i.id===b.dataset.item), lock=bt.round<it.r, cd=bt.cd[it.id]||0;
+    const t=lock?`🔒${it.r}R`:cd>0?Math.ceil(cd)+'초':'☀️'+it.cost;
+    const sm=b.lastChild; if(sm.textContent!==t)sm.textContent=t;
+    b.classList.toggle('lock',lock); b.classList.toggle('sel',selected==='item:'+it.id);
+    b.disabled=state!=='playing'||(!lock&&(cd>0||sun<it.cost));
+  });
+}
+function useItem(id){
+  const it=ITEMS.find(i=>i.id===id); if(!bt||!it||state!=='playing'||quizOpen)return;
+  if(bt.round<it.r){say(`🔒 ${it.name}은(는) ${it.r}라운드부터 쓸 수 있어요.`);return}
+  if(bt.cd[id]>0){say(`${it.name} 준비 중… ${Math.ceil(bt.cd[id])}초`);return}
+  if(sun<it.cost){say(`태양이 ${it.cost-sun} 모자라요. 📘 문제를 풀어 보세요!`);nudgeQuiz();return}
+  if(it.target){
+    if(selected==='item:'+id){selected=bt.prevSel||'pea';syncDeck();syncItems();return}
+    selected='item:'+id; syncDeck(); syncItems(); say(`${it.ic} ${it.name}: 터뜨릴 칸을 누르세요.`); return;
+  }
+  applyItem(it);
+}
+function applyItem(it,col,row){
+  sun-=it.cost; bt.cd[it.id]=it.cd; const m=bt.P.hp;
+  switch(it.id){
+    case 'freeze': zombies.forEach(z=>{z.frozen=z.ab==='boss'?1.5:4});break;
+    case 'bomb':   zombies.slice().forEach(z=>{if(Math.abs(z.row-row)<=1&&Math.abs(z.x-(col+.5))<=1.6)hurtZ(z,230*m)});floatText(col,row,'💥');break;
+    case 'guard':  plants.forEach(p=>{p.hp+=120;p.max=Math.max(p.max,p.hp)});break;
+    case 'mower':  mowers=[true,true,true,true,true];break;
+    case 'bolt':   zombies.slice().forEach(z=>hurtZ(z,95*m));break;
+    case 'push':   zombies.forEach(z=>{z.x=Math.min(9.1,z.x+2.5)});break;
+    case 'heart':  lives=Math.min(5,lives+1);break;
+    case 'double': bt.dbl=15;break;
+  }
+  banner(it.ic+' '+it.name+'!','#2f7fd1'); sound(660,.2,'triangle'); ui(); draw();
+}
+
+/* ---------- 대결 시작 · 짝짓기 ---------- */
+function clsKey(){return 'c'+(CLASSES.indexOf(player.cls)+1)}
+function startBattle(){
+  goFull(); mode='adv'; cleanupAll();
+  mode='battle'; submitted=false; rankBack=null; sun=150; lives=5; score=0; correct=0; wrong=0; asked=new Set();
+  plants=[]; zombies=[]; shots=[]; selected='pea';
+  bt={round:1,wins:0,losses:0,draws:0,faced:[],sent:0,kills:0,incoming:[],cd:{},dbl:0,P:RP(1),opp:null,spawned:0,hist:[],offs:[],prevSel:'pea'};
+  renderItems(); setBg(0); draw(); ui();
+  findOpponent();
+}
+async function findOpponent(){
+  state='match'; const tok=bt.tok=Math.random();
+  modal(`<h2>⚔️ ${bt.round}라운드 상대 찾기</h2>
+   <p id="mMsg">${esc(player.cls)} 친구를 찾고 있어요…</p><div class="spin">🔍</div>
+   <div class="stats"><span>⭐ ${score}점</span><span>${bt.wins}승 ${bt.losses}패${bt.draws?' '+bt.draws+'무':''}</span><span>☀️ ${sun}</span></div>
+   <div class="btnrow"><button class="big alt" onclick="goHome()">🏠 처음으로</button><button class="big alt" onclick="useBot()">🤖 연습 로봇과 하기</button></div>`);
+  const db=await useFirebase();
+  if(!bt||bt.tok!==tok||state!=='match')return;
+  if(!db){
+    const el=$('mMsg'); if(el)el.innerHTML='여러 태블릿이 함께 하는 대결은 선생님이 <b>온라인 설정(Firebase)</b>을 하면 열려요.<br>지금은 <b>🤖 연습 로봇</b>과 대결해요.';
+    setTimeout(()=>{if(bt&&bt.tok===tok&&state==='match')useBot()},2200); return;
+  }
+  const q=db.ref(`${BATTLE_PATH}/${clsKey()}/queue`), me=q.child(PID);
+  bt.q=q;
+  try{await me.set({nick:player.nick,round:bt.round,ts:Date.now()});me.onDisconnect().remove()}catch(e){}
+  const onQ=s=>{
+    if(!bt||bt.tok!==tok||state!=='match')return;
+    const v=s.val()||{}, mine=v[PID];
+    if(mine&&mine.match){gotMatch(mine.match);return}
+    const n=Object.entries(v).filter(([k,o])=>k!==PID&&o&&!o.match&&Date.now()-(o.ts||0)<30000).length;
+    const el=$('mMsg'); if(el&&!bt.noOne)el.textContent=`${player.cls} 친구를 찾고 있어요… (기다리는 친구 ${n}명)`;
+  };
+  q.on('value',onQ); bt.qOff=()=>q.off('value',onQ);
+  const t0=Date.now();
+  const tryIt=()=>{
+    if(!bt||bt.tok!==tok||state!=='match')return;
+    const strict=Date.now()-t0<8000;   /* 처음 8초는 아직 만나지 않은 친구만 찾아요 */
+    const faced=bt.faced.slice(), round=bt.round, myNick=player.nick;
+    q.transaction(v=>{
+      if(!v||!v[PID]||v[PID].match)return;   /* 그만두기 */
+      const now=Date.now();
+      let c=Object.entries(v).filter(([k,o])=>k!==PID&&o&&!o.match&&now-(o.ts||0)<30000&&o.nick!==myNick);
+      if(strict)c=c.filter(([k,o])=>!faced.includes(o.nick));
+      if(!c.length)return;
+      c.sort((a,b)=>(faced.includes(a[1].nick)-faced.includes(b[1].nick))||Math.abs(a[1].round-round)-Math.abs(b[1].round-round)||(a[1].ts-b[1].ts));
+      const [k,o]=c[0], mid=now.toString(36)+PID;
+      v[PID].match={mid,id:k,nick:o.nick}; v[k].match={mid,id:PID,nick:v[PID].nick};
+      return v;
+    },null,false).catch(()=>{});
+    me.child('ts').set(Date.now()).catch(()=>{});
+    bt.qT=setTimeout(tryIt,1400+Math.random()*900);
+  };
+  tryIt();
+  bt.lonelyT=setTimeout(()=>{if(bt&&bt.tok===tok&&state==='match'){bt.noOne=true;const el=$('mMsg');if(el)el.innerHTML='지금 기다리는 친구가 없어요.<br>조금 더 기다리거나 <b>🤖 연습 로봇</b>과 대결할 수 있어요.'}},20000);
+}
+function cleanupQueue(){
+  if(!bt)return;
+  clearTimeout(bt.qT); clearTimeout(bt.lonelyT); bt.noOne=false;
+  if(bt.qOff){bt.qOff();bt.qOff=null}
+  if(bt.q){const me=bt.q.child(PID);try{me.onDisconnect().cancel();me.remove().catch(()=>{})}catch(e){} bt.q=null}
+  bt.tok=0;
+}
+function cleanupMatch(){
+  if(!bt)return;
+  clearTimeout(bt.waitT); clearTimeout(bt.hereT);
+  (bt.offs||[]).forEach(f=>{try{f()}catch(e){}}); bt.offs=[];
+  if(bt.ref){const ref=bt.ref, h=ref.child('here/'+PID);try{h.onDisconnect().cancel();h.remove().catch(()=>{})}catch(e){}
+    setTimeout(()=>{try{ref.remove().catch(()=>{})}catch(e){}},30000); bt.ref=null}
+}
+function cleanupAll(){cleanupQueue();cleanupMatch()}
+function useBot(){
+  if(!bt||state!=='match')return;
+  cleanupQueue(); bt.opp={bot:true,nick:'🤖 연습 로봇'}; bt.ref=null; startRound();
+}
+function gotMatch(m){
+  cleanupQueue();
+  bt.opp={id:m.id,nick:m.nick,bot:false}; bt.mid=m.mid;
+  const ref=bt.ref=fb.ref(`${BATTLE_PATH}/${clsKey()}/matches/${m.mid}`); bt.offs=[];
+  const h=ref.child('here/'+PID); h.set(true).catch(()=>{}); h.onDisconnect().remove();
+  const sendRef=ref.child('send/'+PID), onS=s=>{const v=s.val();if(v)receive(v.t)};
+  sendRef.on('child_added',onS); bt.offs.push(()=>sendRef.off('child_added',onS));
+  let seen=false; const hereRef=ref.child('here/'+m.id), onH=s=>{if(s.val())seen=true;else if(seen)oppLeft()};
+  hereRef.on('value',onH); bt.offs.push(()=>hereRef.off('value',onH));
+  const resRef=ref.child('res/'+m.id), onR=s=>{const v=s.val();if(v&&bt){bt.oppRes=v;if(state==='wait')showRoundResult()}};
+  resRef.on('value',onR); bt.offs.push(()=>resRef.off('value',onR));
+  const mid=m.mid; bt.hereT=setTimeout(()=>{if(bt&&bt.mid===mid&&!seen)oppLeft()},12000);
+  startRound();
+}
+function oppLeft(){
+  if(!bt||!bt.opp||bt.opp.bot||bt.oppRes)return;
+  bt.opp.bot=true; bt.opp.left=true; bt.botT=6;
+  say(`📴 ${bt.opp.nick}의 연결이 끊겼어요. 🤖 로봇이 대신 좀비를 보내요.`);
+  if(state==='wait'){bt.oppRes=botResult();bt.oppRes.gone=true;showRoundResult()}
+}
+function botResult(){
+  const P=bt.P, q=quizPts(), k=killPts();
+  return {score:Math.round(q*(1+Math.random()*3.5)+k*P.goal*(.55+Math.random()*.45)),survived:Math.random()<.9-bt.round*.01,sent:2+Math.round(Math.random()*4),bot:true};
+}
+
+/* ---------- 라운드 ---------- */
+function startRound(){
+  closeModal(); goFull();
+  const r=bt.round; bt.P=RP(r);
+  Object.assign(bt,{spawned:0,kills:0,sent:0,incoming:[],oppRes:null,myRes:null,roundStart:score,botT:Math.max(5,16-r*.35)+bt.P.prep,dbl:0});
+  if(!bt.opp.bot&&!bt.faced.includes(bt.opp.nick))bt.faced.push(bt.opp.nick);
+  zombies=[]; shots=[]; elapsed=0; killed=0; lives=5; mowers=[true,true,true,true,true]; quizOpen=false;
+  if(String(selected).startsWith('item:'))selected=bt.prevSel||'pea';
+  state='playing';
+  setBg((r-1)%STAGES.length); renderItems(); draw(); ui(); fit();
+  banner(`⚔️ ${r}라운드 · vs ${bt.opp.nick}`,'#7a3fd1');
+  const notes=[];
+  const nz=UNLOCK.find(u=>u[0]===r&&u[1]!=='basic'); if(nz){const t=ZT[nz[1]];notes.push(`🆕 새 좀비 ${t.tag} ${t.name}: ${t.desc}`)}
+  const ni=ITEMS.find(i=>i.r===r); if(ni)notes.push(`🎁 새 아이템 ${ni.ic} ${ni.name}: ${ni.desc}`);
+  if(!notes.length&&r===1)notes.push('문제를 맞히고 좀비를 물리치면 상대에게 좀비가 날아가요!');
+  notes.forEach((t,i)=>setTimeout(()=>{if(state==='playing'||state==='paused')say(t)},1700+i*2900));
+}
+function roundEnd(survived){
+  if(state!=='playing'||!bt)return;
+  state='wait'; zombies=[]; shots=[]; quizOpen=false; if(String(selected).startsWith('item:'))selected=bt.prevSel||'pea';
+  const rs=score-bt.roundStart;
+  bt.myRes={score:rs,survived,kills:bt.kills,sent:bt.sent};
+  if(bt.ref)bt.ref.child('res/'+PID).set(bt.myRes).catch(()=>{});
+  if(bt.opp.bot&&!bt.oppRes)bt.oppRes=botResult();
+  sound(survived?780:180,.3,survived?'triangle':'sawtooth');
+  modal(`<h2>${survived?'🛡️ 라운드 끝!':'😵 정원이 뚫렸어요!'}</h2>
+   <p>${esc(bt.opp.nick)}의 결과를 기다리고 있어요…</p><div class="spin">⏳</div>
+   <div class="stats"><span>이번 라운드 ⭐ ${rs}</span><span>물리친 좀비 ${bt.kills}</span><span>보낸 좀비 ${bt.sent}</span></div>`);
+  bt.waitT=setTimeout(()=>{if(state==='wait'&&bt&&!bt.oppRes){bt.oppRes={score:0,survived:false,gone:true};showRoundResult()}},45000);
+  if(bt.oppRes)setTimeout(showRoundResult,700);
+  draw(); ui();
+}
+function showRoundResult(){
+  if(state!=='wait'||!bt||!bt.oppRes)return;
+  clearTimeout(bt.waitT); state='roundover';
+  const me=bt.myRes, op=bt.oppRes, r=bt.round;
+  const res=me.survived!==op.survived?(me.survived?'win':'lose'):me.score>op.score?'win':me.score<op.score?'lose':'draw';
+  const bonus=res==='win'?r*50:res==='draw'?r*20:0;
+  score+=bonus; sun+=100;
+  if(res==='win')bt.wins++;else if(res==='lose')bt.losses++;else bt.draws++;
+  bt.hist.push({r,opp:bt.opp.nick,res,me:me.score,op:op.score});
+  cleanupMatch();
+  const last=r>=BATTLE_ROUNDS;
+  sound(res==='win'?880:res==='draw'?600:300,.3,'triangle');
+  modal(`<h2>${res==='win'?'🏆 이겼어요!':res==='draw'?'🤝 비겼어요!':'💪 아쉽게 졌어요'}</h2>
+   <p style="margin:0">${r}라운드 · vs ${esc(bt.opp.nick)}${op.gone?' (상대가 나갔어요)':''}</p>
+   <table class="rank vs"><thead><tr><th></th><th>나</th><th>${esc(bt.opp.nick)}</th></tr></thead><tbody>
+    <tr><td>라운드 점수</td><td>⭐ ${me.score}</td><td>⭐ ${op.score}</td></tr>
+    <tr><td>정원</td><td>${me.survived?'🛡️ 지킴':'💥 뚫림'}</td><td>${op.gone?'—':op.survived?'🛡️ 지킴':'💥 뚫림'}</td></tr>
+    <tr><td>보낸 좀비</td><td>${me.sent}</td><td>${op.sent??'—'}</td></tr></tbody></table>
+   <div class="stats"><span>${res==='win'?'승리':res==='draw'?'무승부':'보너스'} ⭐ +${bonus}</span><span>라운드 보너스 ☀️ +100</span><span>총점 ⭐ ${score}</span><span>${bt.wins}승 ${bt.losses}패${bt.draws?' '+bt.draws+'무':''}</span></div>
+   ${last?'':`<p style="font-size:15px">다음 ${r+1}라운드: 좀비 ${RP(r+1).goal}마리 · 준비 ${RP(r+1).prep.toFixed(1)}초 · 문제 ⭐ ${Math.round(100*RP(r+1).mult/10)*10}점</p>`}
+   <div class="btnrow"><button class="big alt" onclick="goHome()">🏠 처음으로</button><button class="big" onclick="${last?'battleEnd()':'nextRound()'}">${last?'🏁 최종 결과 보기':`${r+1}라운드 상대 찾기 ▶`}</button></div>`);
+}
+function nextRound(){if(!bt)return;bt.round++;bt.opp=null;findOpponent()}
+function battleEnd(){
+  if(!bt)return; state='won'; cleanupAll();
+  modal(`<h2>🏁 대결 ${BATTLE_ROUNDS}라운드 완주!</h2><p>끝까지 정원을 지켜 냈어요. 대단해요!</p>
+   <div class="stats"><span>⭐ ${score}점</span><span>${bt.wins}승 ${bt.losses}패${bt.draws?' '+bt.draws+'무':''}</span><span>정답 ${correct}개</span></div>
+   <p id="rankLine">기록을 저장하는 중…</p>
+   <div class="btnrow"><button class="big alt" onclick="openRank('battle')">🏅 대결 랭킹</button><button class="big alt" onclick="goHome()">🏠 처음으로</button><button class="big" onclick="startBattle()">⚔️ 다시 대결</button></div>`);
+  submitBattle(true);
+}
+
+/* ---------- 대결 기록 ---------- */
+function localBattle(){try{return JSON.parse(localStorage.getItem('sgdBattle')||'[]')}catch(e){return []}}
+async function submitBattle(done,silent){
+  if(!bt||bt.saved)return; bt.saved=true;
+  const rr=bt.hist.length||(done?bt.round:0);
+  const r={cls:player.cls,nick:player.nick,score,stage:rr,round:rr,wins:bt.wins,losses:bt.losses,cleared:!!done,correct,ts:Date.now()};
+  try{const a=localBattle();a.push(r);localStorage.setItem('sgdBattle',JSON.stringify(a.slice(-500)))}catch(e){}
+  let where='이 기기';
+  const db=await useFirebase();
+  if(db){try{await db.ref(BATTLE_RANK).push(r);where='학년 대결 랭킹'}catch(e){where='이 기기 (인터넷 연결을 확인해 주세요)'}}
+  if(silent)return;
+  const best=bestPerPlayer(await fetchBattle()), i=best.findIndex(x=>x.cls===player.cls&&x.nick===player.nick);
+  const c=best.filter(x=>x.cls===player.cls).findIndex(x=>x.nick===player.nick);
+  const el=$('rankLine'); if(el)el.innerHTML=`💾 ${where}에 저장했어요. 대결 학년 <b>${i+1}위</b> · 우리 반 <b>${c+1}위</b>`;
+}
+async function fetchBattle(){
+  const db=await useFirebase();
+  if(db){try{const snap=await db.ref(BATTLE_RANK).orderByChild('score').limitToLast(500).get();const a=[];snap.forEach(c=>{a.push(c.val())});return a}catch(e){}}
+  return localBattle();
+}
+function battleRows(list,hl,all){
+  if(!list.length)return '<p class="empty">아직 대결 기록이 없어요. ⚔️ 대결에 도전해 보세요!</p>';
+  return '<table class="rank"><thead><tr><th>순위</th><th>반</th><th>별명</th><th>점수</th><th>라운드</th><th>승</th>'+(all?'<th>도전</th>':'')+'</tr></thead><tbody>'+
+   list.map((r,i)=>`<tr class="${hl&&r.cls===player.cls&&r.nick===player.nick?'me':''}"><td>${['🥇','🥈','🥉'][i]||i+1}</td><td>${esc(r.cls.replace('3학년 ',''))}</td><td>${esc(r.nick)}</td><td>${r.score}</td><td>${r.round}${r.cleared?' 🏁':''}</td><td>${r.wins||0}</td>${all?`<td>${all.filter(x=>x.cls===r.cls&&x.nick===r.nick).length}</td>`:''}</tr>`).join('')+'</tbody></table>';
+}
+
+/* ---------- 처음으로 ---------- */
+function homeAsk(){
+  if(state==='menu'){intro();return}
+  const fromPause=state==='paused';
+  if(state==='playing'&&!quizOpen)state='paused';
+  ui();
+  modal(`<h2>🏠 처음 화면으로 갈까요?</h2>
+   <p>${mode==='battle'?'대결을 그만두고':'모험을 그만두고'} 처음 화면으로 돌아가요.${score>0?' 지금까지의 점수는 랭킹에 저장돼요.':''}</p>
+   <div class="btnrow"><button class="big alt" onclick="${fromPause?'pauseMenu()':'resume()'}">아니요</button><button class="big" onclick="goHome()">네, 처음으로</button></div>`);
+}
+function goHome(){
+  if(mode==='battle'&&bt){if(score>0&&state!=='won')submitBattle(false,true);cleanupAll();bt=null}
+  else if(score>0&&(state==='playing'||state==='paused'))submitResult(false,true);
+  mode='adv'; plants=[]; zombies=[]; shots=[]; quizOpen=false; selected='pea';
+  state='menu'; renderItems(); setBg(0); draw(); intro();
+}
+
 /* ================= 입력 ================= */
 $('board').addEventListener('click',e=>{const c=cellAt(e);plantAt(c.col,c.row)});
 $('board').addEventListener('pointermove',showGhost);
 $('board').addEventListener('pointerleave',()=>$('ghost').classList.add('hidden'));
 $('quizBtn').onclick=quiz;
+$('homeBtn').onclick=()=>{ if(!overlayOpen())homeAsk() };
 $('pauseBtn').onclick=()=>{ if(state==='paused'){resume()} else if(state==='playing'&&!quizOpen){pauseMenu()} };
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
