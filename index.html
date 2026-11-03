@@ -188,6 +188,16 @@ table.rank tr.me td{background:#fff3b8;font-weight:900}
 .src{margin:0;font-size:14px;color:#6b7a52}
 .myrank{text-align:center;font-size:17px;margin:8px 0 0}
 .teach{text-align:right;margin:6px 0 0}.teach button{border:none;background:none;color:#8a9a78;font-size:13px;text-decoration:underline}
+.tabs.wrap{flex-wrap:wrap}.tabs.wrap button{flex:1 0 auto;min-width:64px;font-size:15px;padding:6px 8px}
+.stats.small span{font-size:14px;padding:4px 8px}
+.tscroll{max-height:46dvh;overflow:auto;border-radius:12px}
+.teach button{font-size:14px}
+html,body{height:100dvh}
+#app{height:100%}
+.field{place-items:center}
+.scene-preview{max-height:24dvh}
+@media (max-height:760px){.card{min-height:70px}.card img{width:min(46px,100%)}.info{padding:3px 10px}.sunbox b{font-size:24px}.modal{padding:14px 18px}.modal p,.howto{font-size:15px;line-height:1.5}.big{padding:9px;font-size:17px}}
+@media (max-height:600px){.card .nm{font-size:11px}.card{min-height:58px}.card img{width:34px}.quizbtn{font-size:14px}.scene-preview{display:none}}
 </style>
 </head>
 <body>
@@ -286,13 +296,16 @@ function sound(freq=500,dur=.13,type='sine'){
 
 /* ================= 화면 맞추기: 전투장이 화면에 꼭 맞게 (칸은 정사각형) ================= */
 function fit(){
+  /* 태블릿 화면에 꽉 차게: 가로를 먼저 채우고, 높이가 모자라면 칸을 조금 넓적하게(최대 1.35배) 만들어요 */
   const f=$('field'), W=f.clientWidth-10, H=f.clientHeight-10;
-  const STRIP=.05, SCENE=.075;           /* 잔디깎이 줄, 풍경 띠 비율 (전투장 너비 기준) */
-  let bw=Math.min(W/(1+STRIP), H/(5/9+SCENE));
-  bw=Math.max(240,Math.floor(bw));
+  const STRIP=.05;
+  let bw=Math.floor(W/(1+STRIP)), bh=Math.round(bw*5/9), sh=Math.round(bw*.06);
+  if(bh+sh>H){ sh=Math.max(16,Math.round(H*.08)); bh=H-sh; if(bw/9>bh/5*1.35) bw=Math.floor(bh/5*1.35*9); }
+  bw=Math.max(240,bw); bh=Math.max(140,bh);
   const a=$('arena').style;
-  a.setProperty('--bw',bw+'px'); a.setProperty('--bh',Math.round(bw*5/9)+'px');
-  a.setProperty('--strip',Math.round(bw*STRIP)+'px'); a.setProperty('--sh',Math.round(bw*SCENE)+'px');
+  a.setProperty('--bw',bw+'px'); a.setProperty('--bh',bh+'px');
+  a.setProperty('--strip',Math.round(bw*STRIP)+'px'); a.setProperty('--sh',sh+'px');
+  a.setProperty('--cs',Math.min(bw/9,bh/5)+'px');   /* 캐릭터 크기 기준 (칸의 짧은 변) */
 }
 addEventListener('resize',fit);
 
@@ -359,7 +372,8 @@ function intro(){
   <label>별명 <input id="pNick" maxlength="10" placeholder="예: 바다탐험가" value="${esc(player.nick)}" autocomplete="off"></label></div>
   <p class="warn" id="pWarn"></p>
   <div class="btnrow"><button class="big alt" onclick="help()">📖 식물 알아보기</button><button class="big alt" onclick="openRank('grade')">🏅 랭킹</button></div>
-  <div class="btnrow"><button class="big" onclick="begin()">🌱 모험 시작!</button></div>`);
+  <div class="btnrow"><button class="big" onclick="begin()">🌱 모험 시작! (전체화면)</button></div>
+  <p class="teach"><button onclick="teacherLogin()">👩‍🏫 교사 관리</button></p>`);
 }
 function help(){
   const back=state==='menu'?'intro()':'pauseMenu()';
@@ -451,7 +465,7 @@ async function openRank(tab){
    <div class="tabs">${tabs.map(([k,t])=>`<button class="${k===tab?'on':''}" onclick="openRank('${k}')">${t}</button>`).join('')}</div>
    <div id="rankBody"><p class="empty">불러오는 중…</p></div>
    <div class="btnrow"><button class="big" onclick="closeRank()">돌아가기</button></div>
-   <p class="teach"><button onclick="teacherReset()">선생님: 기록 초기화</button></p>`);
+   <p class="teach"><button onclick="teacherLogin()">👩‍🏫 교사 관리</button></p>`);
   const all=await fetchRecs(), best=bestPerPlayer(all), body=$('rankBody'); if(!body)return;
   if(tab==='grade') body.innerHTML=rankRows(best.slice(0,10),true)+myLine(best);
   else if(tab==='class') body.innerHTML=`<p class="src">${esc(player.cls)}</p>`+rankRows(best.filter(r=>r.cls===player.cls).slice(0,10),true);
@@ -476,14 +490,55 @@ async function doReset(){
   $('rankBody').innerHTML='<p class="empty">기록을 모두 지웠어요.</p>';
 }
 
+
+/* ================= 교사 관리 ================= */
+function goFull(){const d=document.documentElement;if(fsEl())return;try{const r=d.requestFullscreen?d.requestFullscreen():d.webkitRequestFullscreen&&d.webkitRequestFullscreen();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
+let teacherOn=false;
+function teacherLogin(){
+  if(teacherOn){teacherPanel('all');return}
+  modal(`<h2>👩‍🏫 교사 관리</h2><p>선생님 비밀번호를 넣어 주세요.</p>
+   <div class="who"><label>비밀번호 <input id="tpin" type="password" inputmode="numeric" autocomplete="off"></label></div><p class="warn" id="tmsg"></p>
+   <div class="btnrow"><button class="big alt" onclick="intro()">돌아가기</button><button class="big" onclick="checkPin()">들어가기</button></div>`);
+  $('tpin').focus(); $('tpin').onkeydown=e=>{if(e.key==='Enter')checkPin()};
+}
+function checkPin(){if($('tpin').value!==TEACHER_PIN){$('tmsg').textContent='비밀번호가 달라요.';return}teacherOn=true;teacherPanel('all')}
+async function teacherPanel(view){
+  state='menu';
+  const opts=[['all','학년 전체'],...CLASSES.map(c=>[c,c.replace('3학년 ','')]),['recent','최근 기록']];
+  modal(`<h2>👩‍🏫 교사 관리 · 랭킹</h2><p class="src">${FIREBASE_CONFIG?'학년 전체 기록 (모든 기기)':'이 기기에 저장된 기록'}</p>
+   <div class="tabs wrap">${opts.map(([k,t])=>`<button class="${k===view?'on':''}" onclick="teacherPanel('${k}')">${t}</button>`).join('')}</div>
+   <div id="tBody"><p class="empty">불러오는 중…</p></div>
+   <div class="btnrow"><button class="big alt" onclick="teacherClear()">🗑 기록 초기화</button><button class="big alt" onclick="teacherOn=false;intro()">🔒 나가기</button><button class="big" onclick="intro()">처음 화면</button></div>`);
+  const all=await fetchRecs(), best=bestPerPlayer(all), body=$('tBody'); if(!body)return;
+  if(view==='recent'){
+    const rec=all.slice().sort((a,b)=>b.ts-a.ts).slice(0,40);
+    body.innerHTML=rec.length?'<div class="tscroll"><table class="rank"><thead><tr><th>시간</th><th>반</th><th>별명</th><th>점수</th><th>단계</th><th>정답</th></tr></thead><tbody>'+rec.map(r=>{const d=new Date(r.ts);return `<tr><td>${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</td><td>${esc(r.cls.replace('3학년 ',''))}</td><td>${esc(r.nick)}</td><td>${r.score}</td><td>${r.stage}${r.cleared?' 🏆':''}</td><td>${r.correct}</td></tr>`}).join('')+'</tbody></table></div>':'<p class="empty">아직 기록이 없어요.</p>';
+    return;
+  }
+  const list=view==='all'?best:best.filter(r=>r.cls===view);
+  const sum=CLASSES.map(c=>{const b=best.filter(r=>r.cls===c);return `<span>${c.replace('3학년 ','')} ${b.length}명</span>`}).join('');
+  body.innerHTML=(view==='all'?`<div class="stats small">${sum}</div>`:`<div class="stats"><span>${esc(view)}</span><span>참여 ${list.length}명</span><span>도전 ${all.filter(r=>r.cls===view).length}번</span></div>`)+
+    (list.length?'<div class="tscroll"><table class="rank"><thead><tr><th>순위</th><th>반</th><th>별명</th><th>최고 점수</th><th>단계</th><th>정답</th><th>도전</th></tr></thead><tbody>'+
+    list.slice(0,50).map((r,i)=>`<tr><td>${['🥇','🥈','🥉'][i]||i+1}</td><td>${esc(r.cls.replace('3학년 ',''))}</td><td>${esc(r.nick)}</td><td>${r.score}</td><td>${r.stage}${r.cleared?' 🏆':''}</td><td>${r.correct}</td><td>${all.filter(x=>x.cls===r.cls&&x.nick===r.nick).length}</td></tr>`).join('')+'</tbody></table></div>':'<p class="empty">아직 기록이 없어요.</p>');
+}
+function teacherClear(){
+  $('tBody').innerHTML=`<p>정말 ${FIREBASE_CONFIG?'<b>학년 전체</b>':'이 기기의'} 기록을 모두 지울까요? 되돌릴 수 없어요.</p>
+   <div class="btnrow"><button class="big alt" onclick="teacherPanel('all')">아니요</button><button class="big" onclick="teacherDoClear()">네, 모두 지워요</button></div><p class="warn" id="pinMsg"></p>`;
+}
+async function teacherDoClear(){
+  try{localStorage.removeItem('sgdRank');localStorage.removeItem('scienceGardenBest')}catch(e){}
+  const db=await useFirebase(); if(db){try{await db.ref(RANK_PATH).remove()}catch(e){$('pinMsg').textContent='학년 기록을 지우지 못했어요. 인터넷 연결을 확인해 주세요.';return}}
+  $('tBody').innerHTML='<p class="empty">기록을 모두 지웠어요.</p>';
+}
+
 /* ================= 기록 ================= */
 function getBest(){try{return JSON.parse(localStorage.getItem('scienceGardenBest')||'{}')}catch(e){return {}}}
 function bestText(){const d=getBest();return d.score?`🏅 이 기기의 최고 기록: ${d.score}점 · ${d.stage||1}단계까지`:''}
 function saveRecord(){try{const d=getBest();localStorage.setItem('scienceGardenBest',JSON.stringify({score:Math.max(score,d.score||0),stage:Math.max(stage+1,d.stage||0)}))}catch(e){}}
 
 /* ================= 게임 흐름 ================= */
-function startGame(){submitted=false;rankBack=null;sun=150;lives=5;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
-function retryStage(){submitted=false;lives=5;sun=Math.max(sun,150);closeModal();startStage()}
+function startGame(){goFull();submitted=false;rankBack=null;sun=150;lives=5;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
+function retryStage(){goFull();submitted=false;lives=5;sun=Math.max(sun,150);closeModal();startStage()}
 /* 단계 배경에서 잔디밭이 그려진 곳 [왼쪽, 위, 오른쪽, 아래] */
 const LAWN={};for(const k in STAGE_BG)LAWN[k-1]=BG_LAWN[STAGE_BG[k]];
 function startStage(){
@@ -513,7 +568,7 @@ function nextStage(){
   <p>다음은 <b>${stage+2}단계 · ${STAGES[stage+1]}</b>예요. 새 단계 보너스 ☀️ +100!</p>
   <div class="btnrow"><button class="big" onclick="goNext()">다음 단계 시작!</button></div>`);
 }
-function goNext(){stage++;sun+=100;closeModal();startStage()}
+function goNext(){goFull();stage++;sun+=100;closeModal();startStage()}
 function lose(){
   state='lost';saveRecord();sound(160,.4,'sawtooth');setTimeout(()=>submitResult(false),0);
   modal(`<h2>😵 정원이 위험해요!</h2><p>${stage+1}단계에서 좀비를 막지 못했어요. 이 단계부터 다시 해 볼까요?</p>
@@ -658,7 +713,7 @@ function unitEl(obj,cls){
 const FIT={"sun": [1.247, -13.54, -26.19], "pea": [1.325, -17.47, -33.79], "wall": [1.0, -0.62, -1.75], "ice": [1.0, -0.94, -1.75], "fire": [1.0, -0.62, -1.75], "cactus": [1.178, -9.98, -19.29], "zombie": [1.0, -0.62, -1.75], "bucket": [1.0, -0.31, -1.75]};
 function setSprite(el,id,mode,ms){
   const sp=el.firstChild;
-  if(!el.dataset.fit){const f=FIT[id]||[1,0,0];Object.assign(sp.style,{width:f[0]*100+'%',height:f[0]*100+'%',left:f[1]+'%',top:f[2]+'%'});el.dataset.fit='1'}
+  if(!el.dataset.fit){const f=FIT[id]||[1,0,0];Object.assign(sp.style,{width:`calc(var(--cs) * ${f[0]})`,height:`calc(var(--cs) * ${f[0]})`,left:`calc(50% - var(--cs) * ${(0.5-f[1]/100).toFixed(4)})`,top:`calc(100% - var(--cs) * ${(1-f[2]/100).toFixed(4)})`});el.dataset.fit='1'}
   el=sp;
   if(el.dataset.mode!==mode){el.style.backgroundImage=`url("${IMG(id+'_'+mode+'.png')||IMG(id+'_idle.png')}")`;el.dataset.mode=mode;el.dataset.frame=''}
   const f=Math.floor(performance.now()/ms)%8; if(el.dataset.frame!==String(f)){el.style.backgroundPosition=`${f*100/7}% 0`;el.dataset.frame=String(f)}

@@ -19,5 +19,11 @@ index.html에서 `const FIREBASE_CONFIG=null;` 을 Firebase 웹 앱 설정으로
 - Realtime Database 규칙에서 `scienceGarden` 경로 읽기·쓰기를 허용해야 해요.
 - 기록 위치: `scienceGarden/grade3_unit2`
 
-## 선생님 기록 초기화
-랭킹 화면 아래 「선생님: 기록 초기화」 → 비밀번호 `0000` (index.html의 `TEACHER_PIN`에서 바꿀 수 있어요)
+## 교사 관리
+처음 화면 아래 「👩‍🏫 교사 관리」 → 비밀번호 `0000` (index.html의 `TEACHER_PIN`에서 바꿀 수 있어요)
+- 학년 전체 / 1~7반별 랭킹 (최고 기록 기준 50명까지, 반별 참여 인원·도전 횟수)
+- 최근 기록 40개
+- 기록 초기화
+
+## 화면
+- 「모험 시작」을 누르면 전체화면으로 바뀌고, 태블릿 화면에 꽉 차게 맞춰져요 (버튼·게임 화면이 모두 한 화면에 보여요).
