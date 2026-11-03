@@ -13,8 +13,8 @@
 - 랭킹은 한 사람당 최고 기록으로 순위를 매겨요 (점수 → 단계 순).
 
 ### 여러 기기의 기록을 학년 랭킹으로 모으려면 (Firebase)
-지금은 `FIREBASE_CONFIG = null` 이라서 **이 기기에 저장된 기록끼리만** 랭킹이 나와요.
-index.html에서 `const FIREBASE_CONFIG=null;` 을 Firebase 웹 앱 설정으로 바꾸면 모든 태블릿 기록이 하나의 학년 랭킹으로 모여요.
+Firebase 프로젝트 **science-garden-de75b** (Realtime Database · 싱가포르)에 연결되어 있어요. 모든 태블릿 기록이 하나의 학년 랭킹으로 모이고, 대결도 태블릿끼리 이어져요.
+다른 프로젝트로 바꾸려면 index.html의 `FIREBASE_CONFIG`를 그 프로젝트의 웹 앱 설정으로 바꾸면 돼요.
 - Firebase 콘솔 → 프로젝트 설정 → 내 앱(웹)의 `firebaseConfig` 값 (`databaseURL` 꼭 포함)
 - Realtime Database 규칙에서 `scienceGarden` 경로 읽기·쓰기를 허용해야 해요.
 - 기록 위치: `scienceGarden/grade3_unit2` (모험) · `scienceGarden/grade3_unit2_battle` (대결 랭킹) · `scienceGarden/grade3_unit2_live` (대결 짝짓기·좀비 보내기)
