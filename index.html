@@ -448,7 +448,7 @@ function cellBox(cx,row){
 function pt(cx,row){return PQ?hp(PQ,cx/9,row/5):[cx/9,row/5]}
 function place(el,cx,row,z){
   const c=cellBox(cx,row); el.style.left=c.x*100+'%'; el.style.top=c.y*100+'%'; el.style.width=c.w*100+'%'; el.style.height=c.h*100+'%';
-  if(PQ){const a=$('arena'),W=a.clientWidth,H=a.clientHeight;el.style.setProperty('--cs',Math.min(c.w*W,c.h*H*1.45)+'px')}else el.style.removeProperty('--cs');
+  if(PQ){const a=$('arena'),W=a.clientWidth,H=a.clientHeight,m=cellBox(4,2);el.style.setProperty('--cs',Math.min(m.w*W,m.h*H*1.45)+'px')}else el.style.removeProperty('--cs');   /* 모든 줄에서 같은 크기 */
   el.style.zIndex=(z||3)+row*3;
 }
 function fit(){
