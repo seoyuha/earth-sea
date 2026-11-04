@@ -1545,7 +1545,7 @@ let BASE_P=null,BASE_Z=null;
 function applySkin(){
   if(!BASE_P){BASE_P=PLANTS.map(p=>({...p}));BASE_Z={};for(const k in ZT)BASE_Z[k]={sp:ZT[k].sp,name:ZT[k].name}}
   const S=SKIN[unit]||{plants:{},zombies:{}};
-  PLANTS.forEach((p,i)=>{Object.assign(p,BASE_P[i]);delete p.art;const o=S.plants[p.id];if(o){p.art=o[0];p.name=o[1];p.short=o[2];if(o[3])p.desc=o[3]}});
+  PLANTS.forEach((p,i)=>{for(const k of Object.keys(p))delete p[k];Object.assign(p,BASE_P[i]);const o=S.plants[p.id];if(o){p.art=o[0];p.name=o[1];p.short=o[2];if(o[3])p.desc=o[3]}});
   for(const k in ZT){Object.assign(ZT[k],BASE_Z[k]);const o=S.zombies[k];if(o){ZT[k].sp=o[0];ZT[k].name=o[1]}}
 }
 const PA=id=>{const p=PLANTS.find(x=>x.id===id);return p&&p.art||id};
