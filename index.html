@@ -521,7 +521,11 @@ const FIREBASE_CONFIG={apiKey:"AIzaSyB6ao3flj1u8gKCc31XmXip2wbyYn7TwgA",authDoma
 let RANK_PATH='scienceGarden/grade3_unit2';
 /* 단원마다 기록을 따로 모아요 (2단원은 예전 기록 그대로) */
 const LK=k=>unit===2?k:k+'_u'+unit;
-const TEACHER_PIN='finel9932!';  /* 교사 관리 비밀번호 */
+/* 교사 관리 비밀번호: 파일에는 비밀번호 대신 '암호화한 값'만 넣어 두어요 (소스를 열어 봐도 비밀번호가 안 보여요).
+   단원 바꾸기는 Firebase 규칙이 비밀번호를 한 번 더 확인해요. 비밀번호를 바꾸려면 이 값과 Firebase 규칙을 함께 바꿔야 해요. */
+const TEACHER_HASH='0dbbed0d5f19d328ef04d79ff94b7038b900785f7ec3f7f9855d1423e8fb8cb8';
+let teacherKey='';
+async function pinOk(v){try{const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')===TEACHER_HASH}catch(e){return false}}
 const CLASSES=['3학년 1반','3학년 2반','3학년 3반','3학년 4반','3학년 5반','3학년 6반','3학년 7반'];
 function esc(t){return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 let player={cls:CLASSES[0],nick:''};
@@ -609,7 +613,7 @@ function teacherReset(){
   body.innerHTML=`<p>선생님 비밀번호를 넣으면 ${FIREBASE_CONFIG?'<b>학년 전체</b>':'이 기기의'} 기록이 모두 지워져요.</p><input id="pin" type="password" autocomplete="off" autocapitalize="off" placeholder="비밀번호"> <button class="big alt" style="min-width:auto;padding:8px 14px" onclick="doReset()">지우기</button><p class="warn" id="pinMsg"></p>`;
 }
 async function doReset(){
-  if($('pin').value!==TEACHER_PIN){$('pinMsg').textContent='비밀번호가 달라요.';return}
+  if(!(await pinOk($('pin').value))){$('pinMsg').textContent='비밀번호가 달라요.';return}
   try{localStorage.removeItem(LK('sgdRank'));localStorage.removeItem(LK('scienceGardenBest'))}catch(e){}
   const db=await useFirebase(); if(db){try{await db.ref(RANK_PATH).remove()}catch(e){$('pinMsg').textContent='학년 기록을 지우지 못했어요. 인터넷 연결을 확인해 주세요.';return}}
   $('rankBody').innerHTML='<p class="empty">기록을 모두 지웠어요.</p>';
@@ -620,13 +624,13 @@ async function doReset(){
 function goFull(){const d=document.documentElement;if(fsEl())return;try{const r=d.requestFullscreen?d.requestFullscreen():d.webkitRequestFullscreen&&d.webkitRequestFullscreen();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
 let teacherOn=false;
 function teacherLogin(){
-  if(teacherOn){teacherPanel('all');return}
+  if(teacherOn&&teacherKey){teacherPanel('all');return}
   modal(`<h2>👩‍🏫 교사 관리</h2><p>선생님 비밀번호를 넣어 주세요.</p>
    <div class="who"><label>비밀번호 <input id="tpin" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></label></div><p class="warn" id="tmsg"></p>
    <div class="btnrow"><button class="big alt" onclick="intro()">돌아가기</button><button class="big" onclick="checkPin()">들어가기</button></div>`); hideTitle();
   $('tpin').focus(); $('tpin').onkeydown=e=>{if(e.key==='Enter')checkPin()};
 }
-function checkPin(){if($('tpin').value!==TEACHER_PIN){$('tmsg').textContent='비밀번호가 달라요.';return}teacherOn=true;teacherPanel('all')}
+async function checkPin(){const v=$('tpin').value;if(!(await pinOk(v))){$('tmsg').textContent='비밀번호가 달라요.';return}teacherKey=v;teacherOn=true;teacherPanel('all')}
 let tView='all';
 async function teacherPanel(view){
   state='menu'; tView=view; teacherView=true; hideTitle();
@@ -1468,7 +1472,8 @@ function unitBox(){
 async function applyUnit(){
   const u=pendUnit||cfgUnit; pendUnit=null;
   const db=await useFirebase(); let ok=true;
-  if(db){try{await db.ref(CFG_PATH).set({unit:u,ts:Date.now()})}catch(e){ok=false}}
+  if(db){try{await db.ref(CFG_PATH).set({unit:u,ts:Date.now(),key:teacherKey})}catch(e){ok=false}}
+  if(!ok){const m=$('uMsg');if(m)m.innerHTML='⚠️ 바꾸지 못했어요. 교사용 관리에 다시 들어와 주세요.';return}
   applyCfgUnit(u); teacherPanel(tView);
   setTimeout(()=>{const m=$('uMsg');if(m)m.innerHTML=ok?`✅ <b>${u}단원 ${UNITS[u].name}</b>으로 바꿨어요. ${db?'모든 태블릿에 바로 적용됐어요.':'이 기기에 적용됐어요.'}`:'⚠️ 저장하지 못했어요. 인터넷 연결을 확인해 주세요.'},50);
 }
