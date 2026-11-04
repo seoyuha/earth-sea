@@ -288,6 +288,12 @@ html,body{height:100dvh}
 @keyframes sbite{50%{transform:translateX(-8%) rotate(-6deg)}}
 @keyframes spuff{50%{transform:scale(1.12)}}
 .board.ownGrid .check{display:none}
+/* 격자 배경: 그림 위에 아무것도 덧그리지 않아요 */
+.arena.own{display:block;position:relative;width:var(--aw);height:var(--ah);border:0;border-radius:10px;box-shadow:0 6px 18px #0004;background:var(--abg) center/100% 100% no-repeat}
+.arena.own .scene{display:none}
+.arena.own .board{position:absolute;left:19.856%;top:32.094%;width:60.287%;height:59.511%;background:none!important}
+.arena.own .strip{position:absolute;left:14.9%;top:32.094%;width:4.6%;height:59.511%;background:none}
+.arena.own .mower{font-size:calc(var(--cs) * .5);filter:drop-shadow(0 2px 2px #0006)}
 </style>
 </head>
 <body>
@@ -417,6 +423,10 @@ function sound(freq=500,dur=.13,type='sine'){
 function fit(){
   /* 태블릿 화면에 꽉 차게: 가로를 먼저 채우고, 높이가 모자라면 칸을 조금 넓적하게(최대 1.35배) 만들어요 */
   const f=$('field'), W=f.clientWidth-10, H=f.clientHeight-10;
+  if($('arena').classList.contains('own')){   /* 배경 그림 한 장을 그대로: 그림 속 9×5 칸에 정원을 맞춰요 */
+    const s=Math.min(W/1672,H/941), a=$('arena').style;
+    a.setProperty('--aw',Math.floor(1672*s)+'px'); a.setProperty('--ah',Math.floor(941*s)+'px'); a.setProperty('--cs',112*s+'px'); return;
+  }
   const STRIP=.05;
   let bw=Math.floor(W/(1+STRIP)), bh=Math.round(bw*5/9), sh=Math.round(bw*.06);
   if(bh+sh>H){ sh=Math.max(16,Math.round(H*.08)); bh=H-sh; if(bw/9>bh/5*1.35) bw=Math.floor(bh/5*1.35*9); }
@@ -689,7 +699,8 @@ function retryStage(){goFull();submitted=false;lives=5;sun=Math.max(sun,150);clo
 /* 단계 배경에서 잔디밭이 그려진 곳 [왼쪽, 위, 오른쪽, 아래] */
 let LAWN={};function calcLawn(){LAWN={};for(const k in STAGE_BG)LAWN[k-1]=BG_LAWN[STAGE_BG[k]]}calcLawn();
 function setBg(idx){
-  $('board').classList.toggle('ownGrid',/^bg[23]_/.test(STAGE_BG[idx+1]||''));
+  const own=/^bg[23]_/.test(STAGE_BG[idx+1]||''); $('board').classList.toggle('ownGrid',own); $('arena').classList.toggle('own',own);
+  if(own)$('arena').style.setProperty('--abg',`url("${IMG(`stage_${idx+1}_background.jpg`)}")`); fit();
   const bg=IMG(`stage_${idx+1}_background.jpg`);
   $('board').style.backgroundImage=`url("${bg}")`; $('scene').style.backgroundImage=`url("${bg}")`;
   /* 그림 속 잔디밭 위치(가로·세로 비율): 이 영역이 정원 칸에 꼭 맞게 보여요 */
