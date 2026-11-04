@@ -501,10 +501,11 @@ const FUSE={'pea+ice':'서리 콩 발사기','ice+pea':'서리 콩 발사기','p
   'cabbage+ice':'얼음 양배추','ice+cabbage':'얼음 양배추','cabbage+wind':'회오리 양배추','wind+cabbage':'회오리 양배추'};
 const plantOpen=p=>mode==='battle'?(bt?bt.round:1)>=p.rf:stage+1>=p.from;
 const deckIds=()=>[...PLANTS.filter(plantOpen).map(p=>p.id),'dig'];
-let streak=0, planted=new Set(), stageLives=5; let SPAWN_GOAL=10; const PREP_TIME=6;
+const MAX_LIVES=3;   /* 목숨 개수 */
+let streak=0, planted=new Set(), stageLives=MAX_LIVES; let SPAWN_GOAL=10; const PREP_TIME=6;
 /* 단계가 올라갈수록 조금씩 어려워져요 (10단계 = 예전 5단계보다 약간 어려움) */
 const LV=()=>mode==='battle'?0:stage*0.65;
-let questions=QUESTION_DATA, state='menu', sun=150, lives=5, score=0, stage=0, elapsed=0, spawned=0, killed=0,
+let questions=QUESTION_DATA, state='menu', sun=150, lives=MAX_LIVES, score=0, stage=0, elapsed=0, spawned=0, killed=0,
     plants=[], zombies=[], shots=[], selected='pea', quizOpen=false, correct=0, wrong=0, asked=new Set(),
     mowers=[true,true,true,true,true], soundOn=true, lastBanner='';
 try{const v=localStorage.getItem('sgdSound');if(v!==null)soundOn=v==='1'}catch(e){}
@@ -602,7 +603,7 @@ function nudgeQuiz(){const q=$('quizBtn');q.classList.remove('shake');void q.off
 /* ================= 화면 정보 ================= */
 function ui(){
   $('sun').textContent=sun; $('score').textContent=score;
-  $('lives').textContent='❤️'.repeat(Math.max(0,lives))+'🤍'.repeat(Math.max(0,5-lives));
+  $('lives').textContent='❤️'.repeat(Math.max(0,lives))+'🤍'.repeat(Math.max(0,MAX_LIVES-lives));
   if(mode==='battle'&&bt){
     $('stageTitle').textContent=`⚔️ ${bt.round}/${BATTLE_ROUNDS}라운드 · vs ${bt.opp?bt.opp.nick:'…'}`;
     const left=Math.max(0,bt.P.goal-bt.spawned)+zombies.length+bt.incoming.length;
@@ -861,8 +862,8 @@ function bestText(){const d=getBest();return d.score?`🏅 이 기기의 최고 
 function saveRecord(){try{const d=getBest();localStorage.setItem(LK('scienceGardenBest'),JSON.stringify({score:Math.max(score,d.score||0),stage:Math.max(stage+1,d.stage||0)}))}catch(e){}}
 
 /* ================= 게임 흐름 ================= */
-function startGame(){hideTitle();goFull();streak=0;mode='adv';renderItems();selected='pea';submitted=false;rankBack=null;sun=150;lives=5;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
-function retryStage(){goFull();submitted=false;lives=5;sun=Math.max(sun,150);closeModal();startStage()}
+function startGame(){hideTitle();goFull();streak=0;mode='adv';renderItems();selected='pea';submitted=false;rankBack=null;sun=150;lives=MAX_LIVES;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
+function retryStage(){goFull();submitted=false;lives=MAX_LIVES;sun=Math.max(sun,150);closeModal();startStage()}
 /* 단계 배경에서 잔디밭이 그려진 곳 [왼쪽, 위, 오른쪽, 아래] */
 let LAWN={};function calcLawn(){LAWN={};for(const k in STAGE_BG)LAWN[k-1]=BG_LAWN[STAGE_BG[k]]}calcLawn();
 function setBg(idx){
@@ -1362,7 +1363,7 @@ function applyItem(it,col,row){
     case 'mower':  mowers=[true,true,true,true,true];break;
     case 'bolt':   zombies.slice().forEach(z=>{fx('fx_bstar',Math.min(8,z.x),z.row,500,1.2);hurtZ(z,95*m)});break;
     case 'push':   zombies.forEach(z=>{if(!z.boss)z.x=Math.min(9.1,z.x+2.5)});break;
-    case 'heart':  lives=Math.min(5,lives+1);break;
+    case 'heart':  lives=Math.min(MAX_LIVES,lives+1);break;
     case 'double': bt.dbl=15;break;
   }
   banner(it.ic+' '+it.name+'!','#2f7fd1'); sound(660,.2,'triangle'); ui(); draw();
@@ -1372,7 +1373,7 @@ function applyItem(it,col,row){
 function clsKey(){return 'c'+(CLASSES.indexOf(player.cls)+1)}
 function startBattle(){
   hideTitle(); goFull(); mode='adv'; cleanupAll();
-  mode='battle'; submitted=false; rankBack=null; sun=150; lives=5; score=0; correct=0; wrong=0; asked=new Set();
+  mode='battle'; submitted=false; rankBack=null; sun=150; lives=MAX_LIVES; score=0; correct=0; wrong=0; asked=new Set();
   plants=[]; zombies=[]; shots=[]; selected='pea';
   bt={round:1,wins:0,losses:0,draws:0,faced:[],sent:0,kills:0,incoming:[],cd:{},dbl:0,P:RP(1),opp:null,spawned:0,hist:[],offs:[],prevSel:'pea'};
   renderItems(); setBg(0); draw(); ui();
@@ -1473,7 +1474,7 @@ function startRound(){
   const r=bt.round; bt.P=RP(r);
   Object.assign(bt,{spawned:0,kills:0,sent:0,incoming:[],oppRes:null,myRes:null,roundStart:score,botT:Math.max(5,16-r*.35)+bt.P.prep,dbl:0});
   if(!bt.opp.bot&&!bt.faced.includes(bt.opp.nick))bt.faced.push(bt.opp.nick);
-  zombies=[]; shots=[]; elapsed=0; killed=0; lives=5; mowers=[true,true,true,true,true]; quizOpen=false;
+  zombies=[]; shots=[]; elapsed=0; killed=0; lives=MAX_LIVES; mowers=[true,true,true,true,true]; quizOpen=false;
   if(String(selected).startsWith('item:'))selected=bt.prevSel||'pea';
   state='playing';
   setBg(BATTLE_BG[unit][Math.min(5,Math.floor((r-1)/5))]); renderDeck(); renderItems(); draw(); ui(); fit();
