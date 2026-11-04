@@ -390,15 +390,69 @@ body[data-u="2"] .rframe{background-image:url("data:image/webp;base64,UklGRmhtAA
 .rframe h2{margin:0!important;white-space:nowrap;word-break:keep-all;font-size:clamp(18px,2.4vw,26px)!important;color:#5a2d86!important;line-height:1.2;text-align:center}
 body[data-u="2"] .rframe h2{color:#14558a!important}
 .rframe p{word-break:keep-all;margin:4px 0 0!important;font-size:clamp(13px,1.6vw,16px)!important;color:#5b4a3a;text-align:center}
+
+/* ===== 새 화면 배치 (선생님 시안): 위 정보줄 + 식물판 · 아이템판 ===== */
+body{background:radial-gradient(circle at 50% 0%,#4f9a5a,#21502e 85%)}
+body[data-u="3"]{background:radial-gradient(circle at 50% 0%,#2f6f8f,#163a57 85%)}
+body[data-u="2"]{background:radial-gradient(circle at 50% 0%,#3d8fb8,#174a6b 85%)}
+#app{gap:8px}
+.hud{display:flex;flex-direction:column;gap:8px;align-items:stretch;flex:none;flex-wrap:nowrap}
+.hudtop{display:flex;align-items:center;gap:clamp(6px,1vw,12px)}
+.hudtop .sunbox{width:clamp(100px,12vw,170px)}
+.hpill{flex:none;display:flex;align-items:center;justify-content:center;gap:6px;height:clamp(40px,5.2vw,62px);padding:0 clamp(10px,1.4vw,22px);
+  border-radius:999px;background:linear-gradient(#ffffff,#dbeefc);border:3px solid #9fc3df;box-shadow:inset 0 -3px 0 #b9d6ec,0 3px 0 #0003;
+  font-weight:900;color:#1d2c4a;font-size:clamp(12px,1.55vw,21px);white-space:nowrap;font-variant-numeric:tabular-nums}
+.stagep{flex:1 1 0;min-width:0;flex-direction:column;align-items:stretch;gap:3px;padding-block:4px}
+.stagep .stage{display:block;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(12px,1.5vw,20px);color:#1d2c4a!important;line-height:1.1}
+.stagep .bar{height:clamp(8px,1vw,13px);margin:0 4%;background:#c9d6e3;border-radius:99px;overflow:hidden;border:2px solid #8fa8c0}
+.stagep .bar i{display:block;height:100%;width:0;background:linear-gradient(#ffe25a,#2aa7e8);transition:width .3s}
+.statusp{flex:0 1 auto;min-width:0;overflow:hidden}.statusp span{overflow:hidden;text-overflow:ellipsis}
+.heartp,.scorep{background:linear-gradient(#fffdf0,#ffe9a8);border-color:#e3b85a;box-shadow:inset 0 -3px 0 #f3d17d,0 3px 0 #0003}
+.heartp .hearts{font-size:clamp(16px,2.1vw,30px);letter-spacing:0}
+.scorep{min-width:clamp(70px,9vw,130px)} .scorep .score{font-size:clamp(14px,1.9vw,26px)}
+.hudtop #quizBtn{width:clamp(130px,17vw,250px);flex:none}
+.hudtray{display:flex;align-items:stretch;gap:clamp(6px,.8vw,10px)}
+.hudtray .deck,.hudtray .items:not(.hidden){display:grid;grid-template-columns:repeat(var(--n,7),minmax(0,1fr));gap:clamp(2px,.4vw,5px);
+  padding:clamp(4px,.6vw,8px);border-radius:18px;align-items:center;margin:0;flex-wrap:nowrap}
+.hudtray .deck{flex:var(--n,7) 1 0;min-width:0;max-width:calc(var(--n,7) * 84px);background:linear-gradient(#9be25a,#43a12b);border:3px solid #2e7d1f;box-shadow:inset 0 2px 0 #c9f59a,0 3px 0 #0004}
+.hudtray .items:not(.hidden){--n:8;flex:8 1 0;min-width:0;max-width:calc(8 * 84px);background:linear-gradient(#e6d6ff,#b48cf0);border:3px solid #7650c8;box-shadow:inset 0 2px 0 #f3eaff,0 3px 0 #0004}
+.hudtray .card{width:100%}
+.hudtray .item{width:100%;min-width:0;padding:0;border:0;background:none;display:block;position:relative}
+.hudtray .item img{width:100%;aspect-ratio:.86;object-fit:fill;display:block;border-radius:10px}
+.hudtray .item small{position:absolute;left:6%;right:6%;bottom:4%;transform:none;font-size:clamp(9px,1.05vw,14px);font-weight:900;line-height:1.3;background:#fffbe9;border:2px solid #e2a236;border-radius:999px;padding:0;text-align:center;color:#4a2b00;white-space:nowrap;overflow:hidden}
+.hudtray .item.sel{outline:none;filter:drop-shadow(0 0 3px #fff3a0) drop-shadow(0 0 7px #ffb800);transform:translateY(-3px)}
+.hudtray .minis{flex:none;width:clamp(130px,15vw,220px);display:flex;gap:4px;align-items:center;margin-left:auto}
+.side,.info{display:none!important}
+@media (max-width:900px){
+  .hudtray{flex-wrap:wrap}
+  .hudtray .deck{flex:1 1 100%;max-width:none;order:1}
+  .hudtray .items:not(.hidden){flex:1 1 0;order:2}
+  .hudtray .minis{order:3}
+  .statusp{display:none}
+}
+@media (max-width:600px){.scorep{min-width:0}.hudtop{flex-wrap:wrap}.stagep{flex-basis:100%;order:-1}}
+.hudtray .card .cost,.hudtray .item small{white-space:nowrap;overflow:hidden;font-size:clamp(8px,1vw,14px);letter-spacing:-.4px;line-height:1.25;border-width:1.5px}
+.hudtray .card .cost::before{font-size:.85em}
+.hudtray .card img{top:6%;left:12%;width:76%}
+.hudtray .card .key{display:none}
+@media (max-width:1100px){.stagep .stage{font-size:clamp(11px,1.3vw,16px)}.hpill{padding:0 10px}}
+@media (max-width:900px){.hudtray .items:not(.hidden){max-width:calc(8 * 66px)}.hudtray .minis{flex:1 1 150px;width:auto;max-width:240px}}
 </style>
 </head>
 <body>
 <div id="app">
   <header class="hud">
-    <div class="sunbox" id="sunbox" aria-label="가진 태양"><span class="ic">☀️</span><b id="sun">150</b></div>
-    <div class="deck" id="deck" aria-label="식물 고르기"></div>
-    <div class="side">
+    <div class="hudtop">
+      <div class="sunbox" id="sunbox" aria-label="가진 태양"><span class="ic">☀️</span><b id="sun">150</b></div>
+      <div class="hpill stagep"><span class="stage" id="stageTitle">1단계 · 지구를 둘러싼 대기</span><div class="bar"><i id="progress"></i></div></div>
+      <div class="hpill statusp"><span id="status">좀비 0/12</span></div>
+      <div class="hpill heartp"><span class="hearts" id="lives" aria-label="남은 목숨"></span></div>
+      <div class="hpill scorep"><span class="score">⭐ <b id="score">0</b></span></div>
       <button class="quizbtn" id="quizBtn" aria-label="문제 풀기">📘 문제 풀기<small>정답 ☀️+50</small></button>
+    </div>
+    <div class="hudtray">
+      <div class="deck" id="deck" aria-label="식물 고르기"></div>
+      <div class="items hidden" id="items" aria-label="대결 아이템"></div>
       <div class="minis">
         <button class="mini" id="homeBtn" aria-label="처음 화면으로">🏠 처음</button>
         <button class="mini" id="pauseBtn" aria-label="잠깐 멈추기">⏸ 멈춤</button>
@@ -406,13 +460,6 @@ body[data-u="2"] .rframe h2{color:#14558a!important}
       </div>
     </div>
   </header>
-  <div class="info">
-    <span class="stage" id="stageTitle">1단계 · 지구를 둘러싼 대기</span>
-    <div class="meter"><div class="bar"><i id="progress"></i></div><span id="status">좀비 0/12</span></div>
-    <div class="items hidden" id="items" aria-label="대결 아이템"></div>
-    <span class="hearts" id="lives" aria-label="남은 목숨"></span>
-    <span class="score">⭐ <b id="score">0</b></span>
-  </div>
   <main class="field" id="field">
     <div class="arena" id="arena">
       <div class="scene" id="scene"></div>
@@ -1339,7 +1386,7 @@ function syncItems(){
   if(!bt)return;
   document.querySelectorAll('[data-item]').forEach(b=>{
     const it=ITEMS.find(i=>i.id===b.dataset.item), lock=bt.round<it.r, cd=bt.cd[it.id]||0;
-    const t=lock?`🔒${it.r}R`:cd>0?Math.ceil(cd)+'초':'☀️'+it.cost;
+    const t=lock?`🔒${it.r}R`:cd>0?Math.ceil(cd)+'초':'☀'+it.cost;
     const sm=b.lastChild; if(sm.textContent!==t)sm.textContent=t;
     b.classList.toggle('lock',lock); b.classList.toggle('sel',selected==='item:'+it.id);
     b.disabled=state!=='playing'||(!lock&&(cd>0||sun<it.cost));
