@@ -489,13 +489,13 @@ const PLANTS=[
   {id:'pea',    name:'콩 발사기',short:'콩 발사',  cost:100,hp:100,from:1,rf:1, desc:'콩알을 쏴요'},
   {id:'wall',   name:'튼튼 호두',short:'호두',  cost:50, hp:430,from:1,rf:1, desc:'좀비를 막아요'},
   {id:'ice',    name:'얼음 발사기',short:'얼음콩',cost:125,hp:95, from:2,rf:1, desc:'얼음 콩으로 좀비를 느리게 해요'},
-  {id:'cabbage',name:'양배추 투척기',short:'양배추',cost:150,hp:100,from:3,rf:1, desc:'양배추를 던져요. 방패를 넘어서 맞혀요'},
-  {id:'cherry', name:'체리 폭탄',short:'체리',  cost:150,hp:300,from:4,rf:3, desc:'펑! 둘레 3×3 좀비에게 큰 피해 (한 번 쓰면 사라져요)'},
-  {id:'wind',   name:'바람꽃',     cost:125,hp:90, from:5,rf:1, desc:'바람을 빠르게 쏘고 좀비를 뒤로 밀어요'},
-  {id:'chomper',name:'식충 식물',  short:'식충',cost:150,hp:140,from:6,rf:6, desc:'앞의 좀비를 한입에 삼켜요 (씹는 12초 동안 쉬어요)'},
-  {id:'heal',   name:'회복 꽃',short:'회복꽃',    cost:100,hp:90, from:7,rf:9, desc:'8초마다 둘레 식물의 체력을 채워요'},
-  {id:'magnet', name:'자석 식물',  short:'자석',cost:100,hp:90, from:8,rf:12,desc:'좀비의 양동이·방패를 끌어와 없애요'},
-  {id:'freeze', name:'빙결 꽃',short:'빙결꽃',    cost:125,hp:90, from:9,rf:15,desc:'10초마다 앞줄 좀비를 꽁꽁 얼려요'}
+  {id:'cabbage',name:'양배추 투척기',short:'양배추',cost:150,hp:100,from:4,rf:1, desc:'양배추를 던져요. 방패를 넘어서 맞혀요'},
+  {id:'cherry', name:'체리 폭탄',short:'체리',  cost:150,hp:300,from:6,rf:3, desc:'펑! 둘레 3×3 좀비에게 큰 피해 (한 번 쓰면 사라져요)'},
+  {id:'wind',   name:'바람꽃',     cost:125,hp:90, from:8,rf:1, desc:'바람을 빠르게 쏘고 좀비를 뒤로 밀어요'},
+  {id:'chomper',name:'식충 식물',  short:'식충',cost:150,hp:140,from:10,rf:6, desc:'앞의 좀비를 한입에 삼켜요 (씹는 12초 동안 쉬어요)'},
+  {id:'heal',   name:'회복 꽃',short:'회복꽃',    cost:100,hp:90, from:12,rf:9, desc:'8초마다 둘레 식물의 체력을 채워요'},
+  {id:'magnet', name:'자석 식물',  short:'자석',cost:100,hp:90, from:14,rf:12,desc:'좀비의 양동이·방패를 끌어와 없애요'},
+  {id:'freeze', name:'빙결 꽃',short:'빙결꽃',    cost:125,hp:90, from:16,rf:15,desc:'10초마다 앞줄 좀비를 꽁꽁 얼려요'}
 ];
 const FUSE={'pea+ice':'서리 콩 발사기','ice+pea':'서리 콩 발사기','pea+wind':'돌풍 콩 발사기','wind+pea':'돌풍 콩 발사기',
   'cabbage+ice':'얼음 양배추','ice+cabbage':'얼음 양배추','cabbage+wind':'회오리 양배추','wind+cabbage':'회오리 양배추'};
@@ -503,8 +503,8 @@ const plantOpen=p=>mode==='battle'?(bt?bt.round:1)>=p.rf:stage+1>=p.from;
 const deckIds=()=>[...PLANTS.filter(plantOpen).map(p=>p.id),'dig'];
 const MAX_LIVES=3;   /* 목숨 개수 */
 let streak=0, planted=new Set(), stageLives=MAX_LIVES; let SPAWN_GOAL=10; const PREP_TIME=6;
-/* 단계가 올라갈수록 조금씩 어려워져요 (10단계 = 예전 5단계보다 약간 어려움) */
-const LV=()=>mode==='battle'?0:stage*0.65;
+/* 단계가 올라갈수록 조금씩 어려워져요 (20단계까지 갈수록 점점 어려움) */
+const LV=()=>mode==='battle'?0:stage*0.34;
 let questions=QUESTION_DATA, state='menu', sun=150, lives=MAX_LIVES, score=0, stage=0, elapsed=0, spawned=0, killed=0,
     plants=[], zombies=[], shots=[], selected='pea', quizOpen=false, correct=0, wrong=0, asked=new Set(),
     mowers=[true,true,true,true,true], soundOn=true, lastBanner='';
@@ -720,7 +720,7 @@ let player={cls:CLASSES[0],nick:''};
 try{const p=JSON.parse(localStorage.getItem('sgdPlayer')||'null');if(p&&p.nick)player=p}catch(e){}
 function setUnit(u){
   unit=UNITS[u]?+u:2; const U=UNITS[unit];
-  STAGES=U.stages; STAGE_BG=U.bg; calcLawn();
+  STAGES=[];STAGE_BG={};for(let i=0;i<20;i++){const t=i<18?(i>>1):9;STAGES.push(i===19?unit+'단원 최종 총정리':i<18&&i%2?U.stages[t]+' · 도전':U.stages[t]);STAGE_BG[i+1]=U.bg[t+1]} calcLawn();
   questions=unit===3?QUESTION_DATA3:QUESTION_DATA; asked=new Set();
   RANK_PATH='scienceGarden/grade3_unit'+unit;
   BATTLE_PATH='scienceGarden/grade3_unit'+unit+'_live'; BATTLE_RANK='scienceGarden/grade3_unit'+unit+'_battle';
@@ -877,7 +877,7 @@ function setBg(idx){
   b.backgroundPosition=`${w<1?L[0]/(1-w)*100:0}% ${h<1?L[1]/(1-h)*100:0}%`;
 }
 function startStage(){
-  SPAWN_GOAL=12+stage;plants=[];zombies=[];shots=[];corpses=[];elapsed=0;spawned=0;killed=0;mowers=[true,true,true,true,true];quizOpen=false;
+  SPAWN_GOAL=12+Math.round(stage*.55);plants=[];zombies=[];shots=[];corpses=[];elapsed=0;spawned=0;killed=0;mowers=[true,true,true,true,true];quizOpen=false;
   state='playing'; sun=Math.max(sun,100);
   unitCheck(); setBg(stage); renderDeck(); planted=new Set(); stageLives=lives;
   draw(); ui(); fit();
@@ -889,7 +889,7 @@ function startStage(){
   notes.forEach((t,i)=>setTimeout(()=>{if(state==='playing')say(t)},1700+i*2900));
 }
 function nextStage(){
-  saveRecord(); if(stage>=2)achieve('st3'); if(stage>=4)achieve('st5'); if(stage>=9)achieve('st10'); if(lives>=stageLives)achieve('perfect');
+  saveRecord(); if(stage>=4)achieve('st3'); if(stage>=9)achieve('st5'); if(stage>=19)achieve('st10'); if(lives>=stageLives)achieve('perfect');
   if(stage===STAGES.length-1){state='won';sound(880,.3,'triangle');
     modal(`<h2>🏆 과학 정원 지키기 성공!</h2><p>${STAGES.length}단계 모두 정원을 지켰어요. ${UNITS[unit].doctor}이 되었네요!</p>
     <div class="stats"><span>⭐ ${score}점</span><span>정답 ${correct}개</span><span>오답 ${wrong}개</span></div><p id="rankLine">기록을 저장하는 중…</p>
@@ -919,7 +919,7 @@ function questionArt(q){if(q.img&&IMG(q.img))return `<img class="quiz-art quiz-p
 function quiz(){
   if(state!=='playing'||quizOpen)return;
   quizOpen=true;
-  const pool=(mode==='battle'||stage===STAGES.length-1)?questions:questions.filter(q=>q.stage===stage+1);
+  const pool=(mode==='battle'||stage===STAGES.length-1)?questions:stageQs();
   let cand=pool.filter(q=>!asked.has(q)); if(!cand.length){pool.forEach(q=>asked.delete(q));cand=pool}
   const q=cand[Math.random()*cand.length|0]; asked.add(q);
   const order=shuffle(q.options.map((_,i)=>i));   /* 보기 순서를 섞어요 */
@@ -1004,8 +1004,10 @@ const ZT={
   darklord:{sp:'darklord',hp:2000,speed:4, bitex:8,immune:1,big:1,summon:8,name:'어둠마왕',tag:'👑',desc:'마지막 보스! 느려지지 않고 좀비를 불러내요'}
 };
 /* 모험 모드: [이 단계부터, 좀비] · 단계 마지막 보스 */
-const ADV_Z=[[1,'basic'],[3,'bucket'],[4,'sport'],[5,'shieldz'],[6,'bat'],[7,'pirate'],[8,'diver'],[9,'miner'],[10,'wizard']];
-const ADV_BOSS={5:'golem',10:'darklord'};
+const ADV_Z=[[1,'basic'],[3,'bucket'],[5,'sport'],[7,'shieldz'],[9,'bat'],[11,'pirate'],[13,'diver'],[15,'miner'],[16,'bomber'],[17,'wizard'],[19,'robot']];
+const ADV_BOSS={5:'golem',10:'dragon',15:'vamp',20:'darklord'};
+/* 단계 → 문제 주제: 1·2단계=주제1 … 19단계=주제10, 20단계=전체 */
+function stageQs(){const t=stage<18?(stage>>1)+1:10,p=stage===19?[]:questions.filter(q=>q.stage===t);return p.length?p:questions}
 function curP(){return mode==='battle'&&bt?bt.P:{hp:1.15+LV()*.3,sp:1+LV()*.9,mult:1}}
 const dmgMul=()=>curP().hp;   /* 폭탄·번개처럼 큰 공격도 좀비가 세지는 만큼 세져요 */
 function makeZ(type,row,x,boss){
@@ -1115,7 +1117,7 @@ function tick(dt){
   elapsed+=dt;
   if(mode==='battle')battleTick(dt);
   else{const gap=Math.max(2,3.2-LV()*.22);
-  if(spawned<SPAWN_GOAL&&elapsed>=spawned*gap+PREP_TIME){spawn(); if(stage>=2&&spawned<SPAWN_GOAL-1&&Math.random()<stage*.05)spawn();}}   /* 높은 단계는 좀비가 두 마리씩 오기도 해요 */
+  if(spawned<SPAWN_GOAL&&elapsed>=spawned*gap+PREP_TIME){spawn(); if(stage>=2&&spawned<SPAWN_GOAL-1&&Math.random()<stage*.028)spawn();}}   /* 높은 단계는 좀비가 두 마리씩 오기도 해요 */
   for(const p of plants.slice())plantTick(p,dt);
   for(const s of shots){
     s.x+=s.speed*dt; s.t+=dt;
@@ -1261,7 +1263,7 @@ const killPts=()=>mode==='battle'&&bt?Math.round(20*bt.P.mult):20;  /* 좀비 �
 const UNLOCK=[[1,'basic'],[3,'bucket'],[5,'sport'],[7,'shieldz'],[9,'bat'],[11,'pirate'],[13,'diver'],[15,'miner'],[17,'wizard'],[19,'bomber'],[21,'robot'],[24,'golem'],[27,'dragon'],[30,'darklord']];
 /* 이 라운드의 마지막 좀비는 보스예요 */
 /* 대결 배경: 5라운드마다 바뀌어요 (단계 배경 번호 0~9) */
-const BATTLE_BG={2:[0,3,6,8,1,9],3:[0,2,4,6,8,9]};
+const BATTLE_BG={2:[0,6,12,16,2,18],3:[0,4,8,12,16,18]};
 const ROUND_BOSS={10:'golem',15:'vamp',20:'dragon',25:'mage',30:'darklord'};
 /* 아이템 (태양으로 사요, 쓰고 나면 잠깐 기다려야 해요) */
 const ITEMS=[
@@ -1680,7 +1682,7 @@ async function applyUnit(){
 const ACH=[
   ['first','🌱','첫 정답','문제를 처음 맞혔어요'],['c50','📘','열공 과학자','정답 50개 모으기 (누적)'],['c200','🎓','과학 박사','정답 200개 모으기 (누적)'],
   ['streak','🔥','연속 정답 10','한 판에서 10문제 연속 정답'],['fuse','✨','첫 융합','식물을 처음 융합했어요'],['garden','🌻','정원사','한 판에 식물 8종류 심기'],
-  ['st3','🥉','3단계 통과','모험 3단계 통과'],['st5','🥈','5단계 통과','모험 5단계 통과'],['st10','🏆','정원 지킴이','모험 10단계 모두 성공'],
+  ['st3','🥉','5단계 통과','모험 5단계 통과'],['st5','🥈','10단계 통과','모험 10단계 통과'],['st10','🏆','정원 지킴이','모험 20단계 모두 성공'],
   ['perfect','💖','완벽한 방어','목숨을 하나도 잃지 않고 단계 통과'],['boss','👑','보스 사냥꾼','보스를 물리쳤어요'],['k500','🧟','좀비 500','좀비 500마리 물리치기 (누적)'],
   ['bwin','⚔️','첫 승리','대결에서 처음 이겼어요'],['b10','🛡️','10라운드','대결 10라운드까지 가기'],['b30','🏅','30라운드 완주','대결 30라운드 완주']
 ];
@@ -1703,7 +1705,7 @@ const GOALS={
 function goalsModal(){
   modal(`<h2>📖 학습 목표 · ${unit}단원 〈${UNITS[unit].name}〉</h2>
    <div class="achlist goals">${GOALS[unit].map(([ic,n,t])=>`<div class="got"><span class="ic">${ic}</span><span><b>${n}</b>${t}</span></div>`).join('')}</div>
-   <p style="font-size:15px">단계: ${STAGES.map((s,i)=>`${i+1} ${s}`).join(' · ')}</p>
+   <p style="font-size:15px">단계: ${UNITS[unit].stages.slice(0,9).map((s,i)=>`${2*i+1}·${2*i+2} ${s}`).join(' · ')} · 19 ${STAGES[18]} · 20 ${STAGES[19]}</p>
    <div class="btnrow"><button class="big" onclick="intro()">돌아가기</button></div>`);
 }
 /* ---------- 설정 · 도움말 ---------- */
@@ -1721,7 +1723,7 @@ function howtoModal(){
     <li>「게임 시작」을 누르고 반과 별명을 정해요. 전체화면으로 바뀌어요.</li>
     <li>위에서 <b>식물 카드</b>를 고르고, 잔디밭 칸을 눌러 심어요. 단계가 오를수록 새 식물과 새 좀비가 나와요.</li>
     <li>태양이 모자라면 <b>📘 문제 풀기</b>! 정답이면 ☀️ +50, 틀려도 설명을 읽으면 ☀️ +15를 받아요.</li>
-    <li>나오는 좀비를 모두 물리치면 다음 단계로 가요. 모두 10단계, 마지막은 단원 총정리예요.</li>
+    <li>나오는 좀비를 모두 물리치면 다음 단계로 가요. 모두 20단계, 19·20단계는 단원 총정리예요.</li>
     <li><b>협동 모드</b>: 같은 반 친구와 짝을 지어 30라운드를 겨뤄요. 문제를 맞히면 친구 정원으로 좀비를 보내요.</li>
     <li>🧤 뽑기로 잘못 심은 식물을 뽑으면 태양을 절반 돌려받아요. 🚜 줄마다 한 번 좀비를 막아 줘요.</li>
   </ol>
