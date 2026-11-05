@@ -500,10 +500,9 @@ body[data-u] .rframe.wing2+p,body[data-u] .rframe.lose2+p{text-align:center}
 /* 첫 화면 레벨 이름표 */
 .tname{left:2.225%;top:.553%;width:24.4%;height:auto;aspect-ratio:514/162;display:block;column-gap:0}
 .tname img{position:absolute;inset:0;width:100%;height:100%;display:block}
-.tname b{position:absolute;left:31.5%;top:10%;width:61%;height:42%;display:block;line-height:calc(var(--s)*52px);align-items:center;background:none!important;padding:0;
-  font-size:calc(var(--s)*36px);font-weight:900;color:#3a2414;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}
+.tname b{position:absolute;left:31.5%;top:16%;width:60%;height:34%;display:block;background:none!important;padding:0;overflow:hidden;font-size:calc(var(--s)*30px);line-height:1.15;font-weight:900;color:#3a2414;white-space:nowrap;letter-spacing:-.02em}
 .tname i,.tname small{display:none}
-.tname b.m{font-size:calc(var(--s)*30px)} .tname b.s{font-size:calc(var(--s)*25px)}
+.tname b.m{font-size:calc(var(--s)*27px)} .tname b.s{font-size:calc(var(--s)*23px)}
 </style>
 </head>
 <body>
@@ -1750,7 +1749,7 @@ function syncTitle(){
   $('tname').innerHTML=`<img src="${LV_BADGE[Math.min(16,lv-1)]}" alt="Lv.${Math.min(16,lv-1)}"><b class="${(player.nick||'').length>6?'s':(player.nick||'').length>4?'m':''}">${player.nick?esc(player.nick):'과학 수비대'}</b>`;
   layoutTitle(); fitNick();
 }
-function fitNick(){const b=document.querySelector('#tname b');if(!b)return;b.style.fontSize='';let f=parseFloat(getComputedStyle(b).fontSize);while(b.scrollWidth>b.clientWidth+1&&f>8){f-=1;b.style.fontSize=f+'px'}}
+function fitNick(){const b=document.querySelector('#tname b');if(!b)return;b.style.fontSize='';let f=parseFloat(getComputedStyle(b).fontSize);while((b.scrollWidth>b.clientWidth+1||b.scrollHeight>b.clientHeight+1)&&f>8){f-=1;b.style.fontSize=f+'px'}}
 let ttT=0;function tsay(t){const e=$('ttoast');e.textContent=t;e.classList.add('show');clearTimeout(ttT);ttT=setTimeout(()=>e.classList.remove('show'),2200);sound(300,.08)}
 function showTitle(){buildTitle();$('title').classList.remove('hidden');syncTitle();layoutTitle()}
 function hideTitle(){$('title').classList.add('hidden')}
