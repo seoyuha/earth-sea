@@ -787,7 +787,7 @@ function modal(html,cls){const m=$('modal');m.className='modal'+(cls?' '+cls:'')
 function closeModal(){$('overlay').classList.add('hidden');ui()}
 function overlayOpen(){return !$('overlay').classList.contains('hidden')}
 
-function intro(){
+function intro(){teacherOn=false;teacherKey='';
   state='menu'; mode='adv'; teacherView=false; if(typeof renderItems==='function')renderItems();
   if(unit!==cfgUnit)setUnit(cfgUnit); unitWait=false;
   closeModal(); showTitle();
@@ -934,7 +934,7 @@ async function doReset(){
 function goFull(){const d=document.documentElement;if(fsEl())return;try{const r=d.requestFullscreen?d.requestFullscreen():d.webkitRequestFullscreen&&d.webkitRequestFullscreen();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
 let teacherOn=false;
 function teacherLogin(){
-  if(teacherOn&&teacherKey){teacherPanel('all');return}
+  teacherOn=false; teacherKey='';   /* 교사 관리에 들어갈 때마다 비밀번호를 물어요 */
   modal(`<h2>👩‍🏫 교사 관리</h2><p>선생님 비밀번호를 넣어 주세요.</p>
    <div class="who"><label>비밀번호 <input id="tpin" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></label></div><p class="warn" id="tmsg"></p>
    <div class="btnrow"><button class="big alt" onclick="intro()">돌아가기</button><button class="big" onclick="checkPin()">들어가기</button></div>`); hideTitle();
