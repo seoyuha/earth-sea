@@ -866,15 +866,26 @@ function useFirebase(){
   return fbReady;
 }
 function localRecs(){try{return JSON.parse(localStorage.getItem(LK('sgdRank'))||'[]')}catch(e){return []}}
-function saveLocal(r){try{const a=localRecs();a.push(r);localStorage.setItem(LK('sgdRank'),JSON.stringify(a.slice(-500)))}catch(e){}}
+function saveLocal(r){try{let a=localRecs();if(r.run)a=a.filter(x=>x.run!==r.run);a.push(r);localStorage.setItem(LK('sgdRank'),JSON.stringify(a.slice(-500)))}catch(e){}}
 let submitted=false;
+/* 한 판(run)마다 기록 한 줄: 처음엔 새로 만들고, 그다음부터는 같은 줄을 고쳐 써요 → 게임 중에도 랭킹이 바로바로 바뀌어요 */
+let runKey=null, runId=null, liveBusy=false, liveLast='';
+async function liveSave(cleared){
+  if(mode!=='adv'||!player.nick)return '이 기기';
+  if(!runId)runId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const r={cls:player.cls,nick:player.nick,score,stage:stage+1,cleared:!!cleared,correct,ts:Date.now(),run:runId};
+  saveLocal(r); liveLast=score+'|'+stage;
+  const db=await useFirebase(); if(!db)return '이 기기';
+  try{
+    if(runKey){try{await db.ref(RANK_PATH+'/'+runKey).set(r);return '학년 랭킹'}catch(e){runKey=null}}
+    const ref=await db.ref(RANK_PATH).push(r); runKey=ref.key; return '학년 랭킹';
+  }catch(e){return '이 기기 (인터넷 연결을 확인해 주세요)'}
+}
+/* 게임하는 동안 10초마다 점수가 바뀌었으면 저장 */
+setInterval(()=>{if(mode==='adv'&&state==='playing'&&score>0&&!liveBusy&&liveLast!==score+'|'+stage){liveBusy=true;liveSave(false).finally(()=>liveBusy=false)}},10000);
 async function submitResult(cleared,silent){
   if(submitted&&!silent)return; if(!silent)submitted=true;
-  const r={cls:player.cls,nick:player.nick,score,stage:stage+1,cleared:!!cleared,correct,ts:Date.now()};
-  saveLocal(r);
-  let where='이 기기';
-  const db=await useFirebase();
-  if(db){try{await db.ref(RANK_PATH).push(r);where='학년 랭킹'}catch(e){where='이 기기 (인터넷 연결을 확인해 주세요)'}}
+  const where=await liveSave(cleared);
   if(silent)return;
   const all=await fetchRecs(); const best=bestPerPlayer(all);
   const me=best.findIndex(x=>x.cls===player.cls&&x.nick===player.nick);
@@ -984,7 +995,7 @@ function bestText(){const d=getBest();return d.score?`🏅 이 기기의 최고 
 function saveRecord(){try{const d=getBest();localStorage.setItem(LK('scienceGardenBest'),JSON.stringify({score:Math.max(score,d.score||0),stage:Math.max(stage+1,d.stage||0)}))}catch(e){}}
 
 /* ================= 게임 흐름 ================= */
-function startGame(){hideTitle();goFull();streak=0;mode='adv';renderItems();selected='pea';submitted=false;rankBack=null;sun=150;lives=MAX_LIVES;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
+function startGame(){runKey=null;runId=null;liveLast='';hideTitle();goFull();streak=0;mode='adv';renderItems();selected='pea';submitted=false;rankBack=null;sun=150;lives=MAX_LIVES;score=0;stage=0;correct=0;wrong=0;asked=new Set();closeModal();startStage()}
 function retryStage(){goFull();submitted=false;lives=MAX_LIVES;sun=Math.max(sun,150);closeModal();startStage()}
 /* 단계 배경에서 잔디밭이 그려진 곳 [왼쪽, 위, 오른쪽, 아래] */
 let LAWN={};function calcLawn(){LAWN={};for(const k in STAGE_BG)LAWN[k-1]=BG_LAWN[STAGE_BG[k]]}calcLawn();
@@ -1017,7 +1028,7 @@ function nextStage(){
     <div class="stats"><span>⭐ ${score}점</span><span>정답 ${correct}개</span><span>오답 ${wrong}개</span></div><p id="rankLine">기록을 저장하는 중…</p>
     <div class="btnrow"><button class="big alt" onclick="openRank('me')">🏅 랭킹 보기</button><button class="big" onclick="startGame()">다시 도전하기</button></div>`);
     submitResult(true);return}
-  state='clear'; sound(780,.25,'triangle');
+  state='clear'; sound(780,.25,'triangle'); liveSave(false);
   modal(`<h2>🎉 ${stage+1}단계 통과!</h2>
   <div class="stats"><span>⭐ ${score}점</span><span>❤️ ${lives}</span><span>정답 ${correct}개</span></div>
   <p>다음은 <b>${stage+2}단계 · ${STAGES[stage+1]}</b>예요. 새 단계 보너스 ☀️ +100!</p>
@@ -1635,7 +1646,7 @@ function showRoundResult(){
   score+=bonus; sun+=100;
   if(res==='win'){bt.wins++;achieve('bwin');if(bt.wins>=5)achieve('b5win')}else if(res==='lose')bt.losses++;else bt.draws++;
   if(r>=10)achieve('b10'); if(r>=30)achieve('b30');
-  bt.hist.push({r,opp:bt.opp.nick,res,me:me.score,op:op.score});
+  bt.hist.push({r,opp:bt.opp.nick,res,me:me.score,op:op.score}); if(bt.round<30)battleSave(false);
   cleanupMatch();
   const last=r>=BATTLE_ROUNDS;
   sound(res==='win'?880:res==='draw'?600:300,.3,'triangle');
@@ -1661,14 +1672,22 @@ function battleEnd(){
 
 /* ---------- 대결 기록 ---------- */
 function localBattle(){try{return JSON.parse(localStorage.getItem(LK('sgdBattle'))||'[]')}catch(e){return []}}
+/* 대결 기록도 한 판에 한 줄: 라운드가 끝날 때마다 같은 줄을 고쳐 써요 */
+async function battleSave(done){
+  if(!bt||!player.nick)return '이 기기';
+  if(!bt.runId)bt.runId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const rr=bt.hist.length||(done?bt.round:0);
+  const r={cls:player.cls,nick:player.nick,score,stage:rr,round:rr,wins:bt.wins,losses:bt.losses,cleared:!!done,correct,ts:Date.now(),run:bt.runId};
+  try{const a=localBattle().filter(x=>x.run!==r.run);a.push(r);localStorage.setItem(LK('sgdBattle'),JSON.stringify(a.slice(-500)))}catch(e){}
+  const db=await useFirebase(); if(!db)return '이 기기';
+  try{
+    if(bt.rankKey){try{await db.ref(BATTLE_RANK+'/'+bt.rankKey).set(r);return '학년 대결 랭킹'}catch(e){bt.rankKey=null}}
+    const ref=await db.ref(BATTLE_RANK).push(r); if(bt)bt.rankKey=ref.key; return '학년 대결 랭킹';
+  }catch(e){return '이 기기 (인터넷 연결을 확인해 주세요)'}
+}
 async function submitBattle(done,silent){
   if(!bt||bt.saved)return; bt.saved=true;
-  const rr=bt.hist.length||(done?bt.round:0);
-  const r={cls:player.cls,nick:player.nick,score,stage:rr,round:rr,wins:bt.wins,losses:bt.losses,cleared:!!done,correct,ts:Date.now()};
-  try{const a=localBattle();a.push(r);localStorage.setItem(LK('sgdBattle'),JSON.stringify(a.slice(-500)))}catch(e){}
-  let where='이 기기';
-  const db=await useFirebase();
-  if(db){try{await db.ref(BATTLE_RANK).push(r);where='학년 대결 랭킹'}catch(e){where='이 기기 (인터넷 연결을 확인해 주세요)'}}
+  const where=await battleSave(done);
   if(silent)return;
   const best=bestPerPlayer(await fetchBattle()), i=best.findIndex(x=>x.cls===player.cls&&x.nick===player.nick);
   const c=best.filter(x=>x.cls===player.cls).findIndex(x=>x.nick===player.nick);
