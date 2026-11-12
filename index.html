@@ -503,6 +503,7 @@ body[data-u] .rframe.wing2+p,body[data-u] .rframe.lose2+p{text-align:center}
 .tname b{position:absolute;left:31.5%;top:16%;width:60%;height:34%;display:block;background:none!important;padding:0;overflow:hidden;font-size:calc(var(--s)*30px);line-height:1.15;font-weight:900;color:#3a2414;white-space:nowrap;letter-spacing:-.02em}
 .tname i,.tname small{display:none}
 .tname b.m{font-size:calc(var(--s)*27px)} .tname b.s{font-size:calc(var(--s)*23px)}
+.overlay:has(.quizmodal){background:#142b1f55}
 </style>
 </head>
 <body>
@@ -1064,10 +1065,10 @@ function answer(q,n,order){
   if($('result').dataset.done)return; $('result').dataset.done='1';
   const good=n===q.answer;
   const pts=mode==='battle'?quizPts():100;
-  if(good){addSun(50);correct++;score+=pts;sound(700);sound(940,.18);if(mode==='battle')sendZombie();streak++;achieve('first');const c=achCount('correct');if(c>=50)achieve('c50');if(c>=200)achieve('c200');if(streak>=10)achieve('streak')}else{addSun(15);wrong++;sound(250);streak=0}
+  if(good){addSun(50);correct++;score+=pts;sound(700);sound(940,.18);if(mode==='battle')sendZombie();streak++;achieve('first');const c=achCount('correct');if(c>=50)achieve('c50');if(c>=200)achieve('c200');if(streak>=10)achieve('streak')}else{addSun(-Math.min(20,sun));wrong++;sound(250);streak=0}
   document.querySelectorAll('[data-a]').forEach(b=>{b.disabled=true;if(+b.dataset.a===q.answer)b.classList.add('correct');else if(+b.dataset.a===n)b.classList.add('wrong')});
   const no=order.indexOf(q.answer)+1;
-  $('result').innerHTML=`<div class="explain"><b>${good?'🎉 정답이에요! ☀️ +50 · ⭐ +'+pts+(mode==='battle'?' · 🧟 상대에게 좀비를 보냈어요!':''):'🌱 괜찮아요! 정답은 '+no+'번이에요. ☀️ +15'}</b><br>${q.explain}</div>
+  $('result').innerHTML=`<div class="explain"><b>${good?'🎉 정답이에요! ☀️ +50 · ⭐ +'+pts+(mode==='battle'?' · 🧟 상대에게 좀비를 보냈어요!':''):'🌱 아쉬워요! 정답은 '+no+'번이에요. ☀️ -20'}</b><br>${q.explain}</div>
   <div class="btnrow"><button class="big" id="continue">▶ 정원으로 돌아가기</button></div>`;
   $('modal').classList.add('done'); skinUI($('result')); $('continue').onclick=()=>{quizOpen=false;closeModal()};
   ui();
@@ -1243,10 +1244,12 @@ function plantTick(p,dt){
 }
 
 /* ================= 한 틱 ================= */
+const QUIZ_SLOW=0.6;   /* 문제 푸는 동안 속도 (1 = 그대로) */
 function tick(dt){
   for(const p of plants){p.anim=Math.max(0,p.anim-dt);p.hurt=Math.max(0,p.hurt-dt)}
   for(const z of zombies)z.bite=Math.max(0,z.bite-dt);
-  if(state!=='playing'||quizOpen||overlayOpen())return;
+  if(state!=='playing'||(overlayOpen()&&!quizOpen))return;
+  if(quizOpen)dt*=QUIZ_SLOW;   /* 문제 푸는 동안에도 게임은 계속돼요 (조금 느리게) */
   elapsed+=dt;
   if(mode==='battle')battleTick(dt);
   else{const gap=Math.max(2,3.2-LV()*.22);
@@ -1286,8 +1289,8 @@ function tick(dt){
   }
   zombies=zombies.filter(z=>!z.dead);
   if(state==='playing'){
-    if(mode==='battle'){if(bt.spawned>=bt.P.goal&&zombies.length===0&&!bt.incoming.length)roundEnd(true)}
-    else if(spawned>=SPAWN_GOAL&&zombies.length===0)nextStage();
+    if(mode==='battle'){if(bt.spawned>=bt.P.goal&&zombies.length===0&&!bt.incoming.length&&!quizOpen)roundEnd(true)}
+    else if(spawned>=SPAWN_GOAL&&zombies.length===0&&!quizOpen)nextStage();
   }
   ui();
 }
@@ -1866,7 +1869,7 @@ function howtoModal(){
   <ol class="howto">
     <li>「게임 시작」을 누르고 반과 별명을 정해요. 전체화면으로 바뀌어요.</li>
     <li>위에서 <b>식물 카드</b>를 고르고, 잔디밭 칸을 눌러 심어요. 단계가 오를수록 새 식물과 새 좀비가 나와요.</li>
-    <li>태양이 모자라면 <b>📘 문제 풀기</b>! 정답이면 ☀️ +50, 틀려도 설명을 읽으면 ☀️ +15를 받아요.</li>
+    <li>태양이 모자라면 <b>📘 문제 풀기</b>! 정답이면 ☀️ +50, 틀리면 ☀️ -20이에요. 문제를 푸는 동안에도 좀비는 조금 느리게 다가와요!</li>
     <li>나오는 좀비를 모두 물리치면 다음 단계로 가요. 모두 20단계, 19·20단계는 단원 총정리예요.</li>
     <li><b>협동 모드</b>: 같은 반 친구와 짝을 지어 30라운드를 겨뤄요. 문제를 맞히면 친구 정원으로 좀비를 보내요.</li>
     <li>🧤 뽑기로 잘못 심은 식물을 뽑으면 태양을 절반 돌려받아요. 🚜 줄마다 한 번 좀비를 막아 줘요.</li>
