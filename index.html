@@ -974,7 +974,7 @@ async function teacherPanel(view){
    <p class="src">${FIREBASE_CONFIG?'학년 전체 기록 (모든 기기)':'이 기기에 저장된 기록'} · ${unit}단원</p>
    <div class="tabs wrap">${opts.map(([k,t])=>`<button class="${k===view?'on':''}" onclick="teacherPanel('${k}')">${t}</button>`).join('')}</div>
    <div id="tBody"><p class="empty">불러오는 중…</p></div>
-   <div class="btnrow"><button class="big alt" onclick="teacherClear()">🗑 기록 초기화</button><button class="big alt" onclick="teacherOn=false;intro()">🔒 나가기</button><button class="big" onclick="intro()">처음 화면</button></div>`);
+   <div class="btnrow"><button class="big alt" onclick="teacherClear()">🗑 기록 초기화</button><button class="big alt" onclick="teacherOn=false;intro()">🔒 나가기</button></div>`);
   if(view==='battle'){const ba=await fetchBattle(),b=bestPerPlayer(ba),body=$('tBody');if(!body)return;
     const sum=CLASSES.map(c=>`<span>${c.replace('3학년 ','')} ${b.filter(r=>r.cls===c).length}명</span>`).join('');
     body.innerHTML=`<div class="stats small">${sum}</div>`+(b.length?'<div class="tscroll">'+battleRows(b.slice(0,60),false,ba)+'</div>':'<p class="empty">아직 대결 기록이 없어요.</p>');return}
