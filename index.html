@@ -504,6 +504,14 @@ body[data-u] .rframe.wing2+p,body[data-u] .rframe.lose2+p{text-align:center}
 .tname i,.tname small{display:none}
 .tname b.m{font-size:calc(var(--s)*27px)} .tname b.s{font-size:calc(var(--s)*23px)}
 .overlay:has(.quizmodal){background:#142b1f55}
+
+/* 정지 · 시간 잠금 화면 */
+.lock{position:fixed;inset:0;z-index:18;background:#0d2016e6;display:grid;place-items:center;padding:20px}
+.lockbox{background:#fffaf0;border-radius:28px;padding:clamp(24px,4vw,48px);text-align:center;max-width:640px;box-shadow:0 10px 40px #0008;border:5px solid #f5b82e}
+.lockic{font-size:clamp(64px,10vw,120px);line-height:1.1}
+.lockbox h2{font-size:clamp(26px,4vw,44px);margin:10px 0;color:#1e3a2b}
+.lockbox p{font-size:clamp(16px,2.2vw,22px);color:#4a5d4e;font-weight:700}
+.locktc{margin-top:18px;border:0;background:#e8e2d2;color:#5a5040;border-radius:999px;padding:8px 18px;font-weight:800;cursor:pointer}
 </style>
 </head>
 <body>
@@ -542,6 +550,7 @@ body[data-u] .rframe.wing2+p,body[data-u] .rframe.lose2+p{text-align:center}
   </main>
 </div>
 <div class="title hidden" id="title"></div>
+<div class="lock hidden" id="lockScreen" role="alert"><div class="lockbox"><div class="lockic" id="lockIc">⏸</div><h2 id="lockT">선생님이 게임을 멈췄어요</h2><p id="lockP">선생님 말씀을 들어요</p><button class="locktc" onclick="teacherLogin()">🔐 교사용</button></div></div>
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 
 <script>
@@ -788,7 +797,7 @@ function modal(html,cls){const m=$('modal');m.className='modal'+(cls?' '+cls:'')
 function closeModal(){$('overlay').classList.add('hidden');ui()}
 function overlayOpen(){return !$('overlay').classList.contains('hidden')}
 
-function intro(){teacherOn=false;teacherKey='';
+function intro(){teacherOn=false;teacherKey='';setTimeout(checkLock,0);
   state='menu'; mode='adv'; teacherView=false; if(typeof renderItems==='function')renderItems();
   if(unit!==cfgUnit)setUnit(cfgUnit); unitWait=false;
   closeModal(); showTitle();
@@ -952,12 +961,13 @@ function teacherLogin(){
    <div class="btnrow"><button class="big alt" onclick="intro()">돌아가기</button><button class="big" onclick="checkPin()">들어가기</button></div>`); hideTitle();
   $('tpin').focus(); $('tpin').onkeydown=e=>{if(e.key==='Enter')checkPin()};
 }
-async function checkPin(){const v=$('tpin').value;if(!(await pinOk(v))){$('tmsg').textContent='비밀번호가 달라요.';return}teacherKey=v;teacherOn=true;teacherPanel('all')}
+async function checkPin(){const v=$('tpin').value;if(!(await pinOk(v))){$('tmsg').textContent='비밀번호가 달라요.';return}teacherKey=v;teacherOn=true;checkLock();teacherPanel('all')}
 let tView='all';
 async function teacherPanel(view){
   state='menu'; tView=view; teacherView=true; hideTitle();
   const opts=[['all','학년 전체'],...CLASSES.map(c=>[c,c.replace('3학년 ','')]),['recent','최근 기록'],['battle','⚔️ 대결']];
   modal(`<h2>👩‍🏫 교사 관리 · 랭킹</h2>
+   ${stopBox()}
    ${unitBox()}
    <p style="margin:10px 0 0;font-weight:900">🏅 랭킹 보기</p>
    <div class="tabs">${Object.entries(UNITS).map(([k,U])=>`<button class="${+k===unit?'on':''}" onclick="setUnit(${k});teacherPanel('${view}')">${U.icon} ${k}단원 기록</button>`).join('')}</div>
@@ -1248,7 +1258,7 @@ const QUIZ_SLOW=0.6;   /* 문제 푸는 동안 속도 (1 = 그대로) */
 function tick(dt){
   for(const p of plants){p.anim=Math.max(0,p.anim-dt);p.hurt=Math.max(0,p.hurt-dt)}
   for(const z of zombies)z.bite=Math.max(0,z.bite-dt);
-  if(state!=='playing'||(overlayOpen()&&!quizOpen))return;
+  if(state!=='playing'||lockOn||(overlayOpen()&&!quizOpen))return;
   if(quizOpen)dt*=QUIZ_SLOW;   /* 문제 푸는 동안에도 게임은 계속돼요 (조금 느리게) */
   elapsed+=dt;
   if(mode==='battle')battleTick(dt);
@@ -1806,7 +1816,39 @@ function applyCfgUnit(u){
 /* 모험 중이면 다음 단계를 시작할 때 바꿔요 */
 function unitCheck(){if(unitWait&&mode!=='battle'){unitWait=false;if(unit!==cfgUnit){setUnit(cfgUnit);say(`📚 이제 ${unit}단원 〈${UNITS[unit].name}〉 문제가 나와요!`)}}}
 function listenConfig(){
-  useFirebase().then(db=>{if(!db)return;db.ref(CFG_PATH+'/unit').on('value',s=>{const v=s.val();if(v!=null)applyCfgUnit(v)})});
+  useFirebase().then(db=>{if(!db)return;db.ref(CFG_PATH+'/unit').on('value',s=>{const v=s.val();if(v!=null)applyCfgUnit(v)});
+    db.ref(CFG_PATH+'/stop').on('value',s=>{cfgStop=!!s.val();checkLock()})});
+}
+/* ===== 선생님 정지 · 13시 이후 잠금 ===== */
+const PLAY_END_HOUR=13;   /* 이 시각(13시)부터는 게임을 할 수 없어요 */
+let cfgStop=false, lockOn=false;
+function lockReason(){if(cfgStop)return 'stop';if(new Date().getHours()>=PLAY_END_HOUR)return 'time';return ''}
+function checkLock(){
+  const r=lockReason(), on=!!r&&!teacherOn, el=$('lockScreen');
+  if(on){
+    $('lockIc').textContent=r==='stop'?'⏸':'🕐';
+    $('lockT').textContent=r==='stop'?'선생님이 게임을 멈췄어요':'오늘 게임 시간이 끝났어요';
+    $('lockP').textContent=r==='stop'?'선생님 말씀을 들어요. 선생님이 다시 시작하면 이어서 할 수 있어요.':`게임은 ${PLAY_END_HOUR}시까지 할 수 있어요. 내일 또 만나요!`;
+    if(!lockOn){
+      if(state==='playing')state='paused';
+      if(quizOpen){quizOpen=false} if(overlayOpen())closeModal();
+      if(typeof ui==='function')ui();
+    }
+  }else if(lockOn&&state==='paused'&&$('title').classList.contains('hidden'))pauseMenu();
+  lockOn=on; el.classList.toggle('hidden',!on);
+}
+setInterval(checkLock,5000);
+async function toggleStop(){
+  const nv=!cfgStop, db=await useFirebase(); let ok=true;
+  if(db){try{await db.ref(CFG_PATH).set({unit:cfgUnit,ts:Date.now(),key:teacherKey,stop:nv})}catch(e){ok=false}}
+  if(!ok){const m=$('sMsg');if(m)m.innerHTML='⚠️ 바꾸지 못했어요. 인터넷 연결을 확인하거나 교사용 관리에 다시 들어와 주세요.';return}
+  cfgStop=nv; teacherPanel(tView);
+  setTimeout(()=>{const m=$('sMsg');if(m)m.innerHTML=nv?'⏸ 모든 태블릿의 게임을 멈췄어요.':'▶ 다시 시작했어요. 학생들이 이어서 할 수 있어요.'},50);
+}
+function stopBox(){
+  return `<div class="ubox"><b>⏸ 게임 정지</b> <small>누르면 모든 학생의 게임이 바로 멈춰요</small>
+   <div class="btnrow"><button class="big ${cfgStop?'':'alt'}" onclick="toggleStop()">${cfgStop?'▶ 다시 시작하기':'⏸ 모든 게임 멈추기'}</button></div>
+   <p class="src" id="sMsg">지금: <b>${cfgStop?'⏸ 멈춤':'▶ 게임 중'}</b> · 매일 ${PLAY_END_HOUR}시부터는 저절로 잠겨요</p></div>`;
 }
 let pendUnit=null;
 function unitBox(){
@@ -1819,7 +1861,7 @@ function unitBox(){
 async function applyUnit(){
   const u=pendUnit||cfgUnit; pendUnit=null;
   const db=await useFirebase(); let ok=true;
-  if(db){try{await db.ref(CFG_PATH).set({unit:u,ts:Date.now(),key:teacherKey})}catch(e){ok=false}}
+  if(db){try{await db.ref(CFG_PATH).set({unit:u,ts:Date.now(),key:teacherKey,stop:cfgStop})}catch(e){ok=false}}
   if(!ok){const m=$('uMsg');if(m)m.innerHTML='⚠️ 바꾸지 못했어요. 교사용 관리에 다시 들어와 주세요.';return}
   applyCfgUnit(u); teacherPanel(tView);
   setTimeout(()=>{const m=$('uMsg');if(m)m.innerHTML=ok?`✅ <b>${u}단원 ${UNITS[u].name}</b>으로 바꿨어요. ${db?'모든 태블릿에 바로 적용됐어요.':'이 기기에 적용됐어요.'}`:'⚠️ 저장하지 못했어요. 인터넷 연결을 확인해 주세요.'},50);
@@ -1932,7 +1974,7 @@ $('fsBtn').onclick=async()=>{const d=document.documentElement;try{
 /* ================= 시작 ================= */
 for(const id of ['zombie','bucket'])for(const m of ['idle','attack','hurt']){const im=new Image();im.src=IMG(id+'_'+m+'.png')}
 for(const k in NEW_ART){const im=new Image();im.src=NEW_ART[k].d}
-setUnit(cfgUnit); listenConfig(); renderDeck(); $('board').style.backgroundImage=`url("${IMG('stage_1_background.jpg')}")`; $('scene').style.backgroundImage=`url("${IMG('stage_1_background.jpg')}")`;
+setUnit(cfgUnit); listenConfig(); setTimeout(checkLock,300); renderDeck(); $('board').style.backgroundImage=`url("${IMG('stage_1_background.jpg')}")`; $('scene').style.backgroundImage=`url("${IMG('stage_1_background.jpg')}")`;
 draw(); ui(); fit(); intro();
 let last=0,lastDraw=0;
 function frame(t){if(last)tick(Math.min((t-last)/1000,.05));last=t;if(t-lastDraw>=33){draw();lastDraw=t}requestAnimationFrame(frame)}
