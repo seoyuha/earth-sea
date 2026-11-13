@@ -506,7 +506,7 @@ body[data-u] .rframe.wing2+p,body[data-u] .rframe.lose2+p{text-align:center}
 .overlay:has(.quizmodal){background:#142b1f55}
 
 /* 정지 · 시간 잠금 화면 */
-.lock{position:fixed;inset:0;z-index:18;background:#0d2016e6;display:grid;place-items:center;padding:20px}
+.lock{position:fixed;inset:0;z-index:9999;background:#0d2016e6;display:grid;place-items:center;padding:20px}
 .lockbox{background:#fffaf0;border-radius:28px;padding:clamp(24px,4vw,48px);text-align:center;max-width:640px;box-shadow:0 10px 40px #0008;border:5px solid #f5b82e}
 .lockic{font-size:clamp(64px,10vw,120px);line-height:1.1}
 .lockbox h2{font-size:clamp(26px,4vw,44px);margin:10px 0;color:#1e3a2b}
@@ -550,7 +550,7 @@ body[data-u] .rframe.wing2+p,body[data-u] .rframe.lose2+p{text-align:center}
   </main>
 </div>
 <div class="title hidden" id="title"></div>
-<div class="lock hidden" id="lockScreen" role="alert"><div class="lockbox"><div class="lockic" id="lockIc">⏸</div><h2 id="lockT">선생님이 게임을 멈췄어요</h2><p id="lockP">선생님 말씀을 들어요</p><button class="locktc" onclick="teacherLogin()">🔐 교사용</button></div></div>
+<div class="lock hidden" id="lockScreen" role="alert"><div class="lockbox"><div class="lockic" id="lockIc">⏸</div><h2 id="lockT">선생님이 게임을 멈췄어요</h2><p id="lockP">선생님 말씀을 들어요</p><button class="locktc" onclick="teacherLogin();checkLock()">🔐 교사용</button></div></div>
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 
 <script>
@@ -1817,14 +1817,15 @@ function applyCfgUnit(u){
 function unitCheck(){if(unitWait&&mode!=='battle'){unitWait=false;if(unit!==cfgUnit){setUnit(cfgUnit);say(`📚 이제 ${unit}단원 〈${UNITS[unit].name}〉 문제가 나와요!`)}}}
 function listenConfig(){
   useFirebase().then(db=>{if(!db)return;db.ref(CFG_PATH+'/unit').on('value',s=>{const v=s.val();if(v!=null)applyCfgUnit(v)});
-    db.ref(CFG_PATH+'/stop').on('value',s=>{cfgStop=!!s.val();checkLock()})});
+    /* 정지 신호: 학생도 읽을 수 있는 ts 값이 음수이면 '멈춤' (Firebase 규칙을 바꾸지 않아도 돼요) */
+    db.ref(CFG_PATH+'/ts').on('value',s=>{const v=s.val();cfgStop=typeof v==='number'&&v<0;checkLock()})});
 }
 /* ===== 선생님 정지 · 13시 이후 잠금 ===== */
 const PLAY_END_HOUR=13;   /* 이 시각(13시)부터는 게임을 할 수 없어요 */
 let cfgStop=false, lockOn=false;
 function lockReason(){if(cfgStop)return 'stop';if(new Date().getHours()>=PLAY_END_HOUR)return 'time';return ''}
 function checkLock(){
-  const r=lockReason(), on=!!r&&!teacherOn, el=$('lockScreen');
+  const r=lockReason(), on=!!r&&!teacherOn&&!($('tpin')&&overlayOpen()), el=$('lockScreen');
   if(on){
     $('lockIc').textContent=r==='stop'?'⏸':'🕐';
     $('lockT').textContent=r==='stop'?'선생님이 게임을 멈췄어요':'오늘 게임 시간이 끝났어요';
@@ -1834,13 +1835,13 @@ function checkLock(){
       if(quizOpen){quizOpen=false} if(overlayOpen())closeModal();
       if(typeof ui==='function')ui();
     }
-  }else if(lockOn&&state==='paused'&&$('title').classList.contains('hidden'))pauseMenu();
+  }else if(lockOn&&!r&&state==='paused'&&$('title').classList.contains('hidden'))pauseMenu();
   lockOn=on; el.classList.toggle('hidden',!on);
 }
 setInterval(checkLock,5000);
 async function toggleStop(){
   const nv=!cfgStop, db=await useFirebase(); let ok=true;
-  if(db){try{await db.ref(CFG_PATH).set({unit:cfgUnit,ts:Date.now(),key:teacherKey,stop:nv})}catch(e){ok=false}}
+  if(db){try{await db.ref(CFG_PATH).set({unit:cfgUnit,ts:nv?-Date.now():Date.now(),key:teacherKey})}catch(e){ok=false}}
   if(!ok){const m=$('sMsg');if(m)m.innerHTML='⚠️ 바꾸지 못했어요. 인터넷 연결을 확인하거나 교사용 관리에 다시 들어와 주세요.';return}
   cfgStop=nv; teacherPanel(tView);
   setTimeout(()=>{const m=$('sMsg');if(m)m.innerHTML=nv?'⏸ 모든 태블릿의 게임을 멈췄어요.':'▶ 다시 시작했어요. 학생들이 이어서 할 수 있어요.'},50);
@@ -1861,7 +1862,7 @@ function unitBox(){
 async function applyUnit(){
   const u=pendUnit||cfgUnit; pendUnit=null;
   const db=await useFirebase(); let ok=true;
-  if(db){try{await db.ref(CFG_PATH).set({unit:u,ts:Date.now(),key:teacherKey,stop:cfgStop})}catch(e){ok=false}}
+  if(db){try{await db.ref(CFG_PATH).set({unit:u,ts:cfgStop?-Date.now():Date.now(),key:teacherKey})}catch(e){ok=false}}
   if(!ok){const m=$('uMsg');if(m)m.innerHTML='⚠️ 바꾸지 못했어요. 교사용 관리에 다시 들어와 주세요.';return}
   applyCfgUnit(u); teacherPanel(tView);
   setTimeout(()=>{const m=$('uMsg');if(m)m.innerHTML=ok?`✅ <b>${u}단원 ${UNITS[u].name}</b>으로 바꿨어요. ${db?'모든 태블릿에 바로 적용됐어요.':'이 기기에 적용됐어요.'}`:'⚠️ 저장하지 못했어요. 인터넷 연결을 확인해 주세요.'},50);
